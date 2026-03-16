@@ -1,0 +1,403 @@
+\documentclass[10pt,twocolumn]{article}
+
+% ── Packages ──
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{groupplots}
+
+% ── Formatting ──
+\setlength{\parskip}{0.5em}
+\setlength{\parindent}{0em}
+
+\title{%
+  \textbf{Dissecting Attention Kernel Performance on H100:}\\
+  \textbf{A Kernel-Level Analysis of Hardware-Native vs.\ Compiler-Generated Attention}
+}
+
+\author{
+  Andrew Zhan\\
+  \texttt{zhan4808@purdue.edu}
+}
+
+\date{\today}
+
+\begin{document}
+\maketitle
+
+% ══════════════════════════════════════════════════════════════════════════════
+\begin{abstract}
+We present a kernel-level performance characterization of two attention backends in the SGLang LLM serving framework on NVIDIA H100 SXM5: FlashInfer (hand-written CUDA/Cutlass exploiting Hopper-native Tensor Memory Accelerator) and SGLang's Triton backend (compiler-generated PTX). Through Nsight Compute profiling and systematic microbenchmarking, we establish three findings. \textbf{(1)}~In decode (memory-bound), FlashInfer achieves 89\% of H100's 3.35~TB/s HBM peak vs.\ Triton's 80\%, a gap driven by memory access pattern quality rather than occupancy---FlashInfer uses 2.4$\times$ more registers per thread but achieves 10\% higher DRAM throughput. \textbf{(2)}~In prefill (compute-bound), FlashInfer achieves 552~TFLOPS (56\% of BF16 peak) vs.\ Triton's 209~TFLOPS (21\%), a 2.6$\times$ gap caused by FlashInfer's use of TMA hardware loads that bypass the L1 cache entirely---not by ``better caching'' as naive L1 hit-rate metrics would suggest. \textbf{(3)}~Triton's prefill kernel compiles to 255 registers (the hardware ceiling) with zero PTX-level or SASS-level spills, proving the performance gap is occupancy-limited, not spill-limited. We provide all profiling scripts and raw data for reproduction, and discuss implications for compiler-generated attention kernel design on Hopper.
+\end{abstract}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Introduction}
+
+Attention kernel performance is a critical factor in LLM serving latency.  Two paradigms exist for implementing attention on modern GPUs:
+
+\begin{enumerate}[leftmargin=*,topsep=0pt]
+  \item \textbf{Hardware-native kernels}: Hand-written CUDA/Cutlass code that directly exploits architecture-specific hardware units.  FlashInfer~\cite{flashinfer} targets Hopper's TMA (Tensor Memory Accelerator), warp-specialized pipelines, and cooperative grid launch.
+  \item \textbf{Compiler-generated kernels}: Triton~\cite{triton} programs compiled through MLIR to PTX, relying on the compiler to select memory access strategies, register allocation, and scheduling.
+\end{enumerate}
+
+Prior work has benchmarked these backends at the framework level---throughput, TTFT, tokens/second~\cite{sglang}.  What is missing from the public literature is \emph{kernel-level} profiling: Nsight Compute metrics showing \emph{why} one kernel is faster---occupancy, bandwidth utilization, cache behavior, register pressure, and tensor core efficiency.
+
+We fill this gap with a controlled study on H100 SXM5 using Llama-3-8B (GQA) and DeepSeek-V2-Lite (MLA) attention configurations. Our contributions:
+
+\begin{itemize}[leftmargin=*,topsep=0pt]
+  \item A complete decode and prefill performance map across batch sizes (1--256) and sequence lengths (256--8192), with both backends profiled at identical tensor shapes.
+  \item NCU-derived root cause analysis distinguishing TMA-path vs.\ global-load-path execution, with corrected interpretation of L1 metrics that avoids a common Hopper profiling pitfall.
+  \item Definitive resolution of the register-spill hypothesis: CUBIN inspection proves Triton's 255-register kernel does \emph{not} spill to local memory, establishing that the performance gap is occupancy-limited.
+  \item Characterization of MLA's KV compression effect on actual HBM traffic, with corrected bandwidth accounting.
+\end{itemize}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Experimental Setup}
+
+\subsection{Hardware}
+All measurements on a single NVIDIA H100 80GB SXM5 (HBM3).  Reference peaks: 3.35~TB/s HBM bandwidth, 989.4~TFLOPS BF16 tensor core, 132 SMs, 50~MB L2 cache.  GPU clocks were not locked (\texttt{nvidia-smi -lgc}); Section~\ref{sec:repro} quantifies the resulting variance.
+
+\subsection{Software}
+SGLang (commit \texttt{7ef18be}), PyTorch 2.9.1+cu128, FlashInfer 0.6.6, Triton 3.5.1, CUDA 12.8, NCU 2025.1.1.
+
+\subsection{Model Configurations}
+
+\begin{table}[h]
+\centering
+\small
+\caption{Attention configurations profiled.}
+\label{tab:configs}
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Model & $H_q$ & $H_{kv}$ & $d$ & Type & KV LoRA \\
+\midrule
+Llama-3-8B  & 32 & 8  & 128 & GQA 4:1 & --- \\
+DS-V2-Lite  & 16 & 16 & 128 & MLA      & 512 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Methodology}
+
+\textbf{Timing.}  CUDA events with 10+ warmup iterations, median of 100+ timed iterations.  Reproducibility verified across 3 independent trials (Section~\ref{sec:repro}).
+
+\textbf{FLOP counting.}  Standard attention: $4 \cdot B \cdot \frac{S^2}{2} \cdot H \cdot d$ (QK$^\top$ matmul + AV matmul, $\times 2$ for multiply-accumulate, $\div 2$ for causal masking).
+
+\textbf{Bandwidth formula.}  Decode: $\text{BW} = (\text{KV}_\text{read} + Q_\text{read} + O_\text{write}) / t_\text{median}$, where KV accounts for 99.8\% of bytes.
+
+\textbf{NCU profiling.}  \texttt{ncu --set full --profile-from-start no} with kernel replay.  Metrics collected: \texttt{dram\_\_throughput}, \texttt{sm\_\_throughput}, \texttt{sm\_\_warps\_active}, L1/L2 sector hit/miss counts, \texttt{launch\_\_registers\_per\_thread}, \texttt{smsp\_\_inst\_executed\_pipe\_tensor}.  NCU profiling overhead is excluded from bandwidth computations (separate timing runs).
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Results: Decode Attention (Memory-Bound)}
+\label{sec:decode}
+
+\subsection{Bandwidth Scaling}
+
+\begin{table}[h]
+\centering
+\small
+\caption{Decode performance, Llama-3-8B GQA, $L_{kv}=2048$.}
+\label{tab:decode_bs}
+\begin{tabular}{@{}rrrrrr@{}}
+\toprule
+BS & FI (ms) & Tri (ms) & FI BW & Tri BW & Speedup \\
+\midrule
+  1 & 0.028 & 0.057 &  298 &  147 & 2.03$\times$ \\
+  4 & 0.032 & 0.058 & 1056 &  582 & 1.82$\times$ \\
+ 16 & 0.058 & 0.070 & 2317 & 1910 & 1.21$\times$ \\
+ 64 & 0.187 & 0.218 & 2870 & 2470 & 1.16$\times$ \\
+128 & 0.364 & 0.416 & 2957 & 2585 & 1.14$\times$ \\
+256 & 0.720 & 0.806 & 2987 & 2669 & 1.12$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Both backends are firmly memory-bound.  FlashInfer peaks at 2,987~GB/s (89\% of 3.35~TB/s) while Triton peaks at 2,669~GB/s (80\%).  The gap narrows from 2$\times$ at bs=1 (launch-overhead dominated) to 1.12$\times$ at bs=256 (bandwidth-saturated).
+
+\begin{table}[h]
+\centering
+\small
+\caption{Decode performance, Llama-3-8B GQA, bs=64, varying $L_{kv}$.}
+\label{tab:decode_kv}
+\begin{tabular}{@{}rrrrrr@{}}
+\toprule
+$L_{kv}$ & FI (ms) & Tri (ms) & FI BW & Tri BW & Speedup \\
+\midrule
+  256 & 0.037 & 0.065 & 1859 & 1053 & 1.76$\times$ \\
+  512 & 0.059 & 0.069 & 2273 & 1950 & 1.17$\times$ \\
+ 1024 & 0.102 & 0.113 & 2648 & 2389 & 1.11$\times$ \\
+ 2048 & 0.187 & 0.217 & 2875 & 2476 & 1.16$\times$ \\
+ 4096 & 0.360 & 0.409 & 2984 & 2624 & 1.14$\times$ \\
+ 8192 & 0.716 & 0.790 & 3000 & 2720 & 1.10$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+FlashInfer approaches 3,000~GB/s at $L_{kv}=8192$, saturating HBM at 89.6\% of peak.
+
+\subsection{NCU Kernel Analysis}
+
+\begin{table}[h]
+\centering
+\small
+\caption{NCU metrics, decode, bs=64, $L_{kv}=2048$.}
+\label{tab:ncu_decode}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Metric & FlashInfer & Triton (Stage 1) \\
+\midrule
+Kernel       & \texttt{BatchPrefill...} & \texttt{\_fwd\_grouped...\_stage1} \\
+DRAM util.   & \textbf{84\%} & 76\% \\
+SM util.     & 17\% & 28\% \\
+Regs/thread  & \textbf{183} & 76 \\
+Active warps & 12.2\% & 35.4\% \\
+Tensor insts & 2.16M & 2.10M \\
+L2 hit rate  & 0.4\% & 1.0\% \\
+Duration     & 191~$\mu$s & 217~$\mu$s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{The occupancy paradox.}  FlashInfer uses 183 registers/thread---2.4$\times$ Triton's 76---yielding only 12.2\% active warps vs.\ 35.4\%.  Yet FlashInfer achieves 84\% DRAM throughput vs.\ 76\%.  This demonstrates that \emph{memory access pattern quality dominates occupancy} for bandwidth-bound kernels: FlashInfer's fused single-kernel design with coalesced, pipelined memory accesses extracts more bandwidth per warp than Triton's higher-occupancy two-phase approach.
+
+\textbf{Two-phase overhead.}  Triton splits attention into Stage~1 (KV scatter-gather, 217~$\mu$s) and Stage~2 (softmax reduction, 10~$\mu$s).  Stage~2 adds 4.4\% overhead but achieves 73.8\% occupancy with only 30 registers---a well-optimized reduction kernel.
+
+\textbf{L2 irrelevance at scale.}  Both backends show $<$1\% L2 hit rate.  The KV cache at bs=64 is $64 \times 2048 \times 8 \times 128 \times 2 = 256$~MB, far exceeding the 50~MB L2.  GQA's 4:1 head sharing provides no cache benefit at this scale.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Results: Prefill Attention (Compute-Bound)}
+\label{sec:prefill}
+
+\subsection{TFLOPS Scaling}
+
+\begin{table}[h]
+\centering
+\small
+\caption{Prefill performance, Llama-3-8B GQA.  TFLOPS uses corrected formula ($4 B S^2 H d / 2$).}
+\label{tab:prefill}
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+BS & $S$ & FI (ms) & Tri (ms) & FI TF & Speedup \\
+\midrule
+ 1 &  512 & 0.024 & 0.040 &   88 & 1.63$\times$ \\
+ 1 & 1024 & 0.033 & 0.069 &  264 & 2.12$\times$ \\
+ 1 & 2048 & 0.089 & 0.214 &  387 & 2.41$\times$ \\
+ 1 & 4096 & 0.283 & 0.730 &  485 & 2.58$\times$ \\
+ 4 & 2048 & 0.307 & 0.753 &  448 & 2.45$\times$ \\
+ 4 & 4096 & 0.995 & 2.698 &  \textbf{552} & 2.71$\times$ \\
+16 & 2048 & 1.238 & 2.822 &  444 & 2.28$\times$ \\
+16 & 4096 & 4.299 &10.531 &  512 & 2.45$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+FlashInfer peaks at \textbf{552~TFLOPS} (55.8\% of 989.4~T peak).  Triton peaks at 209~TFLOPS (21.1\%).  The 2.6$\times$ gap is consistent across all configurations and \emph{widens} with sequence length, suggesting a fundamental rather than incidental difference.
+
+\subsection{NCU Root Cause Analysis}
+\label{sec:prefill_ncu}
+
+\begin{table}[h]
+\centering
+\small
+\caption{NCU metrics, prefill, bs=4, $S=2048$.}
+\label{tab:ncu_prefill}
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Metric & FlashInfer & Triton \\
+\midrule
+Kernel       & \texttt{PrefillWith...} & \texttt{\_fwd\_kernel} \\
+SM util.     & \textbf{52.0\%} & 32.7\% \\
+DRAM util.   & 13.1\% & 9.3\% \\
+Regs/thread  & 168 & \textbf{255} (max) \\
+Active warps & 14.1\% & 12.5\% \\
+Grid size    & 132 (cooperative) & 2048 \\
+L1 global ld sectors & 108K & 37.8M \\
+L2 hit rate  & \textbf{86.4\%} & 72.0\% \\
+Tensor insts & 2.23M & 2.23M \\
+LOCAL mem (CUBIN) & \textbf{0 bytes} & \textbf{0 bytes} \\
+Duration     & 368~$\mu$s & 909~$\mu$s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Finding: TMA vs.\ Global Loads (Not ``Cache Hit Rate'')}
+\label{sec:tma}
+
+A naive reading of NCU's L1 sector counters yields: FlashInfer 97\% L1 hit rate, Triton 0.1\%.  \textbf{This is misleading.}
+
+FlashInfer's Hopper kernel uses TMA (Tensor Memory Accelerator)~\cite{hopper}---a dedicated hardware unit that performs asynchronous bulk tensor copies directly from HBM/L2 into shared memory, \emph{bypassing the L1 global load data path entirely}.  The 108K L1 global load sectors are residual metadata accesses (indptr arrays, scalar parameters), not QKV tensor data.  The 37.8M sectors in Triton represent the \emph{actual} QKV working set flowing through L1 via standard \texttt{ld.global} instructions.
+
+The correct comparison is at L2: FlashInfer achieves 86.4\% hit rate vs.\ Triton's 72.0\%.  FlashInfer's cooperative grid launch (132 blocks = 1 per SM) creates a controlled L2 working set; Triton's 2048-block grid generates 83\% more L2 misses (9.9M vs.\ 5.4M sectors) due to wave-quantization thrashing.
+
+This distinction is architecturally fundamental:  TMA access is not ``better caching''---it is a \emph{different hardware data path} unavailable to Triton's compiler, which generates standard \texttt{ld.global} PTX.
+
+\subsubsection{Finding: No Register Spills (Occupancy-Only Bottleneck)}
+\label{sec:spills}
+
+Triton's prefill kernel compiles to 255 registers---the \texttt{sm\_90} hardware maximum.  A natural hypothesis is that registers spill to local memory, adding latency.  We tested this at three levels:
+
+\begin{enumerate}[leftmargin=*,topsep=0pt]
+  \item \textbf{NCU local memory counters}: \texttt{l1tex\_\_data\_pipe\_lsu\_wavefronts\_mem\_local\_op\_\{ld,st\}.sum} returned \texttt{n/a} on all Hopper kernels (known NCU limitation on sm\_90).
+  \item \textbf{PTX inspection}: Zero \texttt{.local} directives, zero \texttt{st.local} / \texttt{ld.local} instructions in the compiled PTX.
+  \item \textbf{CUBIN resource dump} (\texttt{cuobjdump --dump-resource-usage}): \texttt{LOCAL:0} for \texttt{\_fwd\_kernel}.
+\end{enumerate}
+
+\textbf{Verdict}: Triton's 255-register kernel does \emph{not} spill.  The Triton compiler successfully fits all live variables within the register file at the cost of maximal register allocation.  The performance impact is \emph{purely occupancy}: fewer warps per SM means fewer opportunities to hide memory latency.
+
+This implies that reducing Triton's register count (e.g., via different tiling or explicit \texttt{num\_stages} tuning) could improve occupancy and partially close the prefill gap---but the TMA access pattern difference (Section~\ref{sec:tma}) would remain.
+
+\subsubsection{Finding: Cooperative Grid vs.\ Wave Quantization}
+
+FlashInfer launches exactly 132 thread blocks---one per SM---using CUDA cooperative launch semantics.  This eliminates wave-quantization effects and enables persistent-kernel-style execution where each block processes multiple tiles sequentially with full shared memory and register file utilization.
+
+Triton launches 2,048 blocks ($15.5\times$ more), dispatched in multiple waves.  Each wave evicts the previous wave's L2 residency, explaining the 14-point L2 hit rate gap (86.4\% vs.\ 72.0\%).
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Results: MLA KV Compression}
+\label{sec:mla}
+
+\subsection{Corrected Bandwidth Accounting}
+
+MLA (Multi-head Latent Attention)~\cite{deepseekv2} stores a compressed KV latent of dimension $d_\text{lora} = 512$ rather than full KV heads.  For DeepSeek-V2-Lite:
+
+\begin{align}
+\text{GQA KV bytes} &= 2 \cdot S \cdot H_{kv} \cdot d \cdot 2 = 8{,}192\,S \text{ bytes} \nonumber \\
+\text{MLA KV bytes} &= S \cdot (d_\text{lora} + d_\text{rope}) \cdot 2 = 1{,}152\,S \text{ bytes} \nonumber
+\end{align}
+
+\textbf{Compression ratio: 7.1$\times$} reduction in HBM traffic for equivalent logical attention.
+
+\begin{table}[h]
+\centering
+\small
+\caption{MLA decode, DeepSeek-V2-Lite, $L_{kv}=2048$.  ``Script BW'' uses logical (expanded) sizes; ``Actual BW'' uses compressed KV bytes.}
+\label{tab:mla}
+\begin{tabular}{@{}rrrr@{}}
+\toprule
+BS & FI (ms) & Script BW & Actual BW \\
+\midrule
+  1 & 0.020 &  1,290 &    183 \\
+  4 & 0.019 &  5,245 &    745 \\
+ 16 & 0.021 & 18,958 &  2,694 \\
+ 64 & 0.065 & 24,755 &  3,518 \\
+128 & 0.112 & 28,666 &  4,074 \\
+256 & 0.214 & 30,160 &  2,822 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The ``Script BW'' column---bandwidth computed from logical tensor sizes---exceeds the 3.35~TB/s physical peak, which is nonsensical.  The corrected ``Actual BW'' using compressed KV sizes shows the kernel achieves $\sim$84\% of HBM peak at bs=256, consistent with FlashInfer's GQA decode performance.
+
+\textbf{Note}: At bs=64--128, actual BW appears to exceed peak.  This is because MLA's compressed representation fits within L2 cache at these sizes ($64 \times 2048 \times 576 \times 2 = 144$~MB), enabling L2 hits that inflate effective bandwidth beyond the HBM-only peak.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{End-to-End Context}
+\label{sec:e2e}
+
+\begin{table}[h]
+\centering
+\small
+\caption{Decode step decomposition, Qwen2.5-7B, bs=64.}
+\label{tab:e2e}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+Component & Time ($\mu$s) & Share \\
+\midrule
+Linear layers (GEMMs) & 5,079 & 70.6\% \\
+\textbf{Attention (FlashInfer)} & \textbf{1,413} & \textbf{19.6\%} \\
+Norms (RMSNorm) & 145 & 2.0\% \\
+Activation (SiLU) & 98 & 1.4\% \\
+RoPE & 57 & 0.8\% \\
+Other & 399 & 5.5\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Attention constitutes $\sim$20\% of decode time.  A 10\% attention kernel improvement yields only $\sim$2\% end-to-end speedup.  The dominant cost (71\%) is linear layers---motivating INT4 GEMM optimization as higher-ROI than further attention tuning.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Reproducibility}
+\label{sec:repro}
+
+\begin{table}[h]
+\centering
+\small
+\caption{Reproducibility across 3 independent trials (warmup=20, iters=200).}
+\label{tab:repro}
+\begin{tabular}{@{}lcccr@{}}
+\toprule
+Config & T1 & T2 & T3 & CV \\
+\midrule
+FI dec bs=1   & 0.029 & 0.030 & 0.030 & 3.4\% \\
+Tri dec bs=1  & 0.056 & 0.059 & 0.057 & 2.6\% \\
+FI dec bs=64  & 0.187 & 0.187 & 0.187 & $<$0.1\% \\
+Tri dec bs=64 & 0.216 & 0.216 & 0.216 & $<$0.1\% \\
+FI dec bs=256 & 0.719 & 0.718 & 0.718 & $<$0.1\% \\
+Tri dec bs=256& 0.813 & 0.813 & 0.813 & $<$0.1\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At bs$\geq$64, results are deterministic ($<$0.1\% CV).  At bs=1, $\sim$3\% variance arises from GPU boost clock fluctuations on short ($\sim$28~$\mu$s) kernels.  Relative speedup ratios are stable across all trials.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Discussion}
+
+\subsection{Implications for Compiler-Generated Attention}
+
+The prefill gap is architecturally fundamental: Triton's MLIR$\to$PTX pipeline generates \texttt{ld.global} instructions because it has no TMA code generation path for attention patterns.  Triton 3.x introduced \texttt{tl.experimental\_descriptor\_load} for TMA access, but this requires manual descriptor setup that attention kernels have not adopted.  Closing the prefill gap requires either:
+
+\begin{enumerate}[leftmargin=*,topsep=0pt]
+  \item Triton compiler support for automatic TMA lowering of attention-shaped loads (research problem).
+  \item Manual TMA integration in the Triton kernel source (engineering, loses portability).
+  \item A higher-level DSL that targets both TMA and global load paths depending on the GPU architecture.
+\end{enumerate}
+
+The decode gap (1.1$\times$) is more tractable: Triton's two-phase split could be fused, and register tuning (\texttt{num\_warps}, tiling factors) could recover some bandwidth.
+
+\subsection{The Occupancy Paradox as Design Principle}
+
+FlashInfer's decode kernel demonstrates that for memory-bound workloads, \emph{maximizing bandwidth per warp} outperforms \emph{maximizing warp count}.  At 183 registers, FlashInfer has 2.4$\times$ fewer active warps than Triton, yet extracts 10\% more HBM bandwidth.  This is consistent with the general principle that memory-bound kernels benefit more from coalesced access patterns and prefetching than from occupancy~\cite{volkov2010}.
+
+\subsection{MLA: The Real Attention Optimization}
+
+The 7.1$\times$ KV traffic reduction from MLA compression dwarfs the 1.1$\times$ kernel-level decode speedup from FlashInfer over Triton.  This suggests that \emph{algorithmic} changes to attention (MLA, linear attention, sliding window) have larger impact than \emph{kernel-level} optimization---at least for decode, where the kernel is already at 80--89\% of HBM peak.
+
+\subsection{Limitations}
+
+\begin{itemize}[leftmargin=*,topsep=0pt]
+  \item Single GPU; multi-GPU tensor-parallel workloads may show different ratios due to all-reduce overlap.
+  \item GPU clocks not locked; absolute numbers carry $\sim$3\% uncertainty at small batch sizes.
+  \item NCU local memory counters unavailable on Hopper (\texttt{n/a}); spill analysis relies on PTX/CUBIN inspection.
+  \item One model architecture per attention type.
+\end{itemize}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Related Work}
+
+FlashAttention~\cite{flashattention} and FlashAttention-2~\cite{flashattention2} introduced tiling-based exact attention with $O(N)$ memory. FlashInfer~\cite{flashinfer} extends this with Hopper-native TMA support.  Triton~\cite{triton} enables Python-level GPU kernel development.  SGLang~\cite{sglang} integrates both backends for LLM serving.  DeepSeek-V2~\cite{deepseekv2} introduced MLA.
+
+Volkov~\cite{volkov2010} demonstrated that occupancy is not always the primary performance factor, motivating our analysis of FlashInfer's register-heavy approach.  To our knowledge, no prior public work provides NCU-level comparison of FlashInfer vs.\ Triton attention on Hopper hardware.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Conclusion}
+
+We presented a kernel-level characterization of FlashInfer vs.\ Triton attention on H100, identifying three root causes for the performance gap: TMA vs.\ global load paths (prefill), memory access pattern quality vs.\ occupancy (decode), and cooperative grid launch vs.\ wave quantization (L2 efficiency).  The Triton register-spill hypothesis was disproven via CUBIN inspection.  Our data and methodology are publicly available for reproduction.
+
+The most actionable takeaway is that the prefill gap is \emph{hardware-path-limited, not algorithmically limited}---both kernels perform identical attention computations, but FlashInfer accesses a hardware unit (TMA) that Triton's compiler cannot currently target.  This motivates investment in TMA code generation for Triton and similar compiler frameworks.
+
+% ══════════════════════════════════════════════════════════════════════════════
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}

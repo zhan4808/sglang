@@ -1,0 +1,82 @@
+
+======================================================================
+Model: Llama-3-8B  |  Type: GQA  |  Backends: ['triton']
+======================================================================
+
+  [    triton] prefill bs=   4  seq_len= 2048 ... ==PROF== Connected to process 8618 (/usr/bin/python3.10)
+median=203.456ms  TFLOPS=0.34
+
+
+================================================================================
+SUMMARY
+================================================================================
+Llama-3-8B prefill bs=4 len=2048
+  triton: 203.456ms (0.34 TFLOPS)
+
+
+GPU: NVIDIA H100 80GB HBM3
+CUDA: 12.8
+PyTorch: 2.9.1+cu128
+FlashInfer: 0.6.6
+==PROF== Disconnected from process 8618
+"ID","Process ID","Process Name","Host Name","Kernel Name","Context","Stream","Block Size","Grid Size","Device","CC","Section Name","Metric Name","Metric Unit","Metric Value"
+"0","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","dram__throughput.avg.pct_of_peak_sustained_elapsed","%","9.30"
+"0","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","gpu__time_duration.sum","ns","910272"
+"0","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","l1tex__t_sectors_pipe_lsu_mem_global_op_ld_lookup_hit.sum","sector","28672"
+"0","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","l1tex__t_sectors_pipe_lsu_mem_global_op_ld_lookup_miss.sum","sector","37752832"
+"0","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","launch__block_size","","256"
+"0","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","launch__grid_size","","2048"
+"0","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","launch__registers_per_thread","register/thread","255"
+"0","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","lts__t_sectors_op_read_lookup_hit.sum","sector","28757741"
+"0","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","lts__t_sectors_op_read_lookup_miss.sum","sector","9907001"
+"0","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","sm__throughput.avg.pct_of_peak_sustained_elapsed","%","32.70"
+"0","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","sm__warps_active.avg.pct_of_peak_sustained_active","%","12.46"
+"0","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","smsp__inst_executed_pipe_tensor.sum","inst","2228224"
+"1","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","dram__throughput.avg.pct_of_peak_sustained_elapsed","%","8.81"
+"1","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","gpu__time_duration.sum","ns","910656"
+"1","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","l1tex__t_sectors_pipe_lsu_mem_global_op_ld_lookup_hit.sum","sector","28672"
+"1","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","l1tex__t_sectors_pipe_lsu_mem_global_op_ld_lookup_miss.sum","sector","37752832"
+"1","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","launch__block_size","","256"
+"1","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","launch__grid_size","","2048"
+"1","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","launch__registers_per_thread","register/thread","255"
+"1","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","lts__t_sectors_op_read_lookup_hit.sum","sector","29227350"
+"1","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","lts__t_sectors_op_read_lookup_miss.sum","sector","11068229"
+"1","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","sm__throughput.avg.pct_of_peak_sustained_elapsed","%","32.72"
+"1","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","sm__warps_active.avg.pct_of_peak_sustained_active","%","12.46"
+"1","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","smsp__inst_executed_pipe_tensor.sum","inst","2228224"
+"2","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","dram__throughput.avg.pct_of_peak_sustained_elapsed","%","9.18"
+"2","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","gpu__time_duration.sum","ns","911712"
+"2","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","l1tex__t_sectors_pipe_lsu_mem_global_op_ld_lookup_hit.sum","sector","28672"
+"2","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","l1tex__t_sectors_pipe_lsu_mem_global_op_ld_lookup_miss.sum","sector","37752832"
+"2","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","launch__block_size","","256"
+"2","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","launch__grid_size","","2048"
+"2","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","launch__registers_per_thread","register/thread","255"
+"2","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","lts__t_sectors_op_read_lookup_hit.sum","sector","28650459"
+"2","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","lts__t_sectors_op_read_lookup_miss.sum","sector","11706609"
+"2","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","sm__throughput.avg.pct_of_peak_sustained_elapsed","%","32.78"
+"2","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","sm__warps_active.avg.pct_of_peak_sustained_active","%","12.46"
+"2","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","smsp__inst_executed_pipe_tensor.sum","inst","2228224"
+"3","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","dram__throughput.avg.pct_of_peak_sustained_elapsed","%","7.65"
+"3","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","gpu__time_duration.sum","ns","902880"
+"3","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","l1tex__t_sectors_pipe_lsu_mem_global_op_ld_lookup_hit.sum","sector","28672"
+"3","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","l1tex__t_sectors_pipe_lsu_mem_global_op_ld_lookup_miss.sum","sector","37752832"
+"3","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","launch__block_size","","256"
+"3","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","launch__grid_size","","2048"
+"3","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","launch__registers_per_thread","register/thread","255"
+"3","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","lts__t_sectors_op_read_lookup_hit.sum","sector","30574411"
+"3","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","lts__t_sectors_op_read_lookup_miss.sum","sector","12342371"
+"3","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","sm__throughput.avg.pct_of_peak_sustained_elapsed","%","33.04"
+"3","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","sm__warps_active.avg.pct_of_peak_sustained_active","%","12.46"
+"3","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","smsp__inst_executed_pipe_tensor.sum","inst","2228224"
+"4","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","dram__throughput.avg.pct_of_peak_sustained_elapsed","%","8.72"
+"4","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","gpu__time_duration.sum","ns","911104"
+"4","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","l1tex__t_sectors_pipe_lsu_mem_global_op_ld_lookup_hit.sum","sector","28672"
+"4","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","l1tex__t_sectors_pipe_lsu_mem_global_op_ld_lookup_miss.sum","sector","37752832"
+"4","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","launch__block_size","","256"
+"4","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","launch__grid_size","","2048"
+"4","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","launch__registers_per_thread","register/thread","255"
+"4","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","lts__t_sectors_op_read_lookup_hit.sum","sector","29116529"
+"4","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","lts__t_sectors_op_read_lookup_miss.sum","sector","11937557"
+"4","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","sm__throughput.avg.pct_of_peak_sustained_elapsed","%","32.75"
+"4","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","sm__warps_active.avg.pct_of_peak_sustained_active","%","12.46"
+"4","8618","python3.10","127.0.0.1","_fwd_kernel","1","7","(256, 1, 1)","(4, 32, 16)","0","9.0","Command line profiler metrics","smsp__inst_executed_pipe_tensor.sum","inst","2228224"

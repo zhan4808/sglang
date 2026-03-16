@@ -199,13 +199,16 @@ def bench_triton_decode(cfg, batch_size, kv_len, dtype, warmup=10, iters=100, nc
     v_buf = torch.randn(total_tokens, cfg.num_kv_heads, cfg.head_dim, dtype=dtype, device=device)
     o = torch.empty_like(q)
 
-    kv_indptr = (torch.arange(batch_size + 1, device=device, dtype=torch.int32) * kv_len)
-    kv_indices = torch.arange(total_tokens, device=device, dtype=torch.int32)
+    kv_indptr = (torch.arange(batch_size + 1, device=device, dtype=torch.int64) * kv_len)
+    kv_indices = torch.arange(total_tokens, device=device, dtype=torch.int64)
     sm_scale = cfg.head_dim ** -0.5
 
-    # Triton decode uses split-kv: compute num_kv_splits
-    num_kv_splits = max(1, min(32, (kv_len + 255) // 256))
-    max_kv_splits = num_kv_splits
+    # Triton decode uses split-kv: compute num_kv_splits (per-batch tensor)
+    num_kv_splits_val = max(1, min(32, (kv_len + 255) // 256))
+    max_kv_splits = num_kv_splits_val
+    num_kv_splits = torch.full(
+        (batch_size,), num_kv_splits_val, dtype=torch.int64, device=device,
+    )
 
     attn_logits = torch.empty(
         (batch_size, cfg.num_q_heads, max_kv_splits, cfg.head_dim + 1),
