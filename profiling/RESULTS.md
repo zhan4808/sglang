@@ -397,10 +397,34 @@ Since reconstruction BMMs are memory-bound at all batch sizes, speedup ≈ ratio
 | 128 | 20.00 | 8.00 | 2.50x |
 | 256 | 24.00 | 12.00 | 2.00x |
 
-At bs=1 (latency-critical): **3.94x speedup → 2.17ms → 0.55ms full-model reconstruction overhead**.
+At bs=1 (latency-critical): **3.94x theoretical speedup** (assumes HBM-bound).
 
-### Script
+### Measured INT4 Kernel Performance
+
+We implemented a custom batched W4A16 Triton GEMM kernel and benchmarked against cuBLAS FP16 `torch.bmm`:
+
+| BS | FP16 bmm (ms) | INT4 Triton (ms) | FP16 loop (ms) | INT4/FP16 |
+|----|--------------|-----------------|----------------|-----------|
+| 1 | 0.036 | 0.073 | 2.194 | 0.49x |
+| 4 | 0.037 | 0.073 | 2.203 | 0.50x |
+| 16 | 0.036 | 0.082 | 2.187 | 0.44x |
+| 64 | 0.036 | 0.129 | 2.215 | 0.28x |
+| 128 | 0.040 | 0.187 | 2.211 | 0.21x |
+| 256 | 0.070 | 0.302 | 2.223 | 0.23x |
+
+**The INT4 kernel is 2× slower than cuBLAS FP16, not 3.9× faster.**
+
+**Root cause: L2 cache residency.** The reconstruction weight matrix (128 × 128 × 512 × 2 = 16 MB per BMM) fits within H100's 50 MB L2 cache. After first access, weights are served from L2 at ~12 TB/s, making HBM bandwidth savings from INT4 irrelevant.
+
+**However**, the batched INT4 kernel is 30× faster than a per-head FP16 loop (0.073ms vs 2.19ms), confirming the batched grid approach is effective.
+
+**Implications**:
+1. Roofline-predicted INT4 speedups assume HBM-bound operation, which is violated for L2-resident small matrices
+2. In production serving with L2 pressure from concurrent operations, weights may be evicted to HBM, shifting the balance
+3. A CUDA-native kernel with INT8 tensor cores (Hopper has INT8 MMA, not INT4 MMA) could potentially close the gap
+
+### Scripts
 ```bash
-python3 profiling/eval_int4_perplexity.py
-# Output: profiling/results_int4_perplexity.json
+python3 profiling/eval_int4_perplexity.py      # Perplexity eval
+python3 profiling/int4_batched_gemm_v2.py       # Kernel benchmark
 ```
