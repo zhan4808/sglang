@@ -16,9 +16,10 @@
 \gdef\HyperFirstAtBeginDocument#1{#1}
 \providecommand\HyField@AuxAddToFields[1]{}
 \providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{deepseekv2}
+\citation{deepseekv3}
 \citation{flashinfer}
 \citation{triton}
-\citation{sglang}
 \@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {2}Experimental Setup}{2}{section.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Hardware}{2}{subsection.2.1}\protected@file@percent }
@@ -31,12 +32,11 @@
 \@writefile{toc}{\contentsline {section}{\numberline {3}Results: Decode Attention (Memory-Bound)}{2}{section.3}\protected@file@percent }
 \newlabel{sec:decode}{{3}{2}{Results: Decode Attention (Memory-Bound)}{section.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Bandwidth Scaling}{2}{subsection.3.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Decode performance, Llama-3-8B GQA, $L_{kv}=2048$.\relax }}{2}{table.caption.3}\protected@file@percent }
-\newlabel{tab:decode_bs}{{2}{2}{Decode performance, Llama-3-8B GQA, $L_{kv}=2048$.\relax }{table.caption.3}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Decode performance, Llama-3-8B GQA, bs=64, varying $L_{kv}$.\relax }}{2}{table.caption.4}\protected@file@percent }
-\newlabel{tab:decode_kv}{{3}{2}{Decode performance, Llama-3-8B GQA, bs=64, varying $L_{kv}$.\relax }{table.caption.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}NCU Kernel Analysis}{2}{subsection.3.2}\protected@file@percent }
-\citation{hopper}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Decode performance, Llama-3-8B GQA, $L_{kv}=2048$.\relax }}{3}{table.caption.3}\protected@file@percent }
+\newlabel{tab:decode_bs}{{2}{3}{Decode performance, Llama-3-8B GQA, $L_{kv}=2048$.\relax }{table.caption.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Decode performance, Llama-3-8B GQA, bs=64, varying $L_{kv}$.\relax }}{3}{table.caption.4}\protected@file@percent }
+\newlabel{tab:decode_kv}{{3}{3}{Decode performance, Llama-3-8B GQA, bs=64, varying $L_{kv}$.\relax }{table.caption.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}NCU Kernel Analysis}{3}{subsection.3.2}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces NCU metrics, decode, bs=64, $L_{kv}=2048$.\relax }}{3}{table.caption.5}\protected@file@percent }
 \newlabel{tab:ncu_decode}{{4}{3}{NCU metrics, decode, bs=64, $L_{kv}=2048$.\relax }{table.caption.5}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {4}Results: Prefill Attention (Compute-Bound)}{3}{section.4}\protected@file@percent }
@@ -50,6 +50,7 @@
 \newlabel{tab:ncu_prefill}{{6}{3}{NCU metrics, prefill, bs=4, $S=2048$.\relax }{table.caption.7}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.1}Finding: TMA vs.\ Global Loads (Not ``Cache Hit Rate'')}{3}{subsubsection.4.2.1}\protected@file@percent }
 \newlabel{sec:tma}{{4.2.1}{3}{Finding: TMA vs.\ Global Loads (Not ``Cache Hit Rate'')}{subsubsection.4.2.1}{}}
+\citation{hopper}
 \citation{deepseekv2}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.2}Finding: No Register Spills (Occupancy-Only Bottleneck)}{4}{subsubsection.4.2.2}\protected@file@percent }
 \newlabel{sec:spills}{{4.2.2}{4}{Finding: No Register Spills (Occupancy-Only Bottleneck)}{subsubsection.4.2.2}{}}
@@ -57,9 +58,9 @@
 \@writefile{toc}{\contentsline {section}{\numberline {5}MLA Reconstruction GEMM Overhead}{4}{section.5}\protected@file@percent }
 \newlabel{sec:recon}{{5}{4}{MLA Reconstruction GEMM Overhead}{section.5}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Cost Breakdown: DeepSeek-V3 Architecture}{4}{subsection.5.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces MLA reconstruction overhead per layer, DeepSeek-V3 shapes, $L_{kv}=2048$. Reconstruction cost is independent of KV length.\relax }}{4}{table.caption.8}\protected@file@percent }
-\newlabel{tab:recon}{{7}{4}{MLA reconstruction overhead per layer, DeepSeek-V3 shapes, $L_{kv}=2048$. Reconstruction cost is independent of KV length.\relax }{table.caption.8}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Roofline Analysis: Memory-Bound at All Batch Sizes}{4}{subsection.5.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces MLA reconstruction overhead per layer, DeepSeek-V3 shapes, $L_{kv}=2048$. Reconstruction cost is independent of KV length.\relax }}{5}{table.caption.8}\protected@file@percent }
+\newlabel{tab:recon}{{7}{5}{MLA reconstruction overhead per layer, DeepSeek-V3 shapes, $L_{kv}=2048$. Reconstruction cost is independent of KV length.\relax }{table.caption.8}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Arithmetic intensity and achieved bandwidth for reconstruction BMMs. H100 roofline crossover: AI = 295 (990\nobreakspace  {}TFLOPS / 3.35\nobreakspace  {}TB/s).\relax }}{5}{table.caption.9}\protected@file@percent }
 \newlabel{tab:roofline}{{8}{5}{Arithmetic intensity and achieved bandwidth for reconstruction BMMs. H100 roofline crossover: AI = 295 (990~TFLOPS / 3.35~TB/s).\relax }{table.caption.9}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {6}INT4 Reconstruction Weight Quantization}{5}{section.6}\protected@file@percent }
@@ -72,48 +73,56 @@
 \newlabel{eq:speedup}{{1}{5}{Theoretical Speedup}{equation.6.1}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Theoretical INT4 speedup for reconstruction BMMs. Weight bytes dominate at small batch sizes.\relax }}{5}{table.caption.11}\protected@file@percent }
 \newlabel{tab:int4_speedup}{{10}{5}{Theoretical INT4 speedup for reconstruction BMMs. Weight bytes dominate at small batch sizes.\relax }{table.caption.11}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Measured Speedup: The L2 Cache Barrier}{5}{subsection.6.4}\protected@file@percent }
+\citation{roofline}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Measured Kernel Performance}{6}{subsection.6.4}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Measured INT4 kernel performance vs.\ cuBLAS FP16 \texttt  {torch.bmm}. ``FP16 loop'' = 128 individual \texttt  {torch.mm} calls.\relax }}{6}{table.caption.12}\protected@file@percent }
 \newlabel{tab:int4_measured}{{11}{6}{Measured INT4 kernel performance vs.\ cuBLAS FP16 \texttt {torch.bmm}. ``FP16 loop'' = 128 individual \texttt {torch.mm} calls.\relax }{table.caption.12}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.5}The L2 Cache Barrier: Why Roofline Fails for Small-Matrix MLA Reconstruction}{6}{subsection.6.5}\protected@file@percent }
+\newlabel{sec:l2barrier}{{6.5}{6}{The L2 Cache Barrier: Why Roofline Fails for Small-Matrix MLA Reconstruction}{subsection.6.5}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {7}End-to-End Context}{6}{section.7}\protected@file@percent }
 \newlabel{sec:e2e}{{7}{6}{End-to-End Context}{section.7}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces Decode step decomposition, Qwen2.5-7B, bs=64.\relax }}{6}{table.caption.13}\protected@file@percent }
 \newlabel{tab:e2e}{{12}{6}{Decode step decomposition, Qwen2.5-7B, bs=64.\relax }{table.caption.13}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {8}Reproducibility}{6}{section.8}\protected@file@percent }
-\newlabel{sec:repro}{{8}{6}{Reproducibility}{section.8}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces Reproducibility across 3 independent trials (warmup=20, iters=200).\relax }}{6}{table.caption.14}\protected@file@percent }
-\newlabel{tab:repro}{{13}{6}{Reproducibility across 3 independent trials (warmup=20, iters=200).\relax }{table.caption.14}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {9}Discussion}{6}{section.9}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {9.1}Implications for Compiler-Generated Attention}{6}{subsection.9.1}\protected@file@percent }
 \citation{volkov2010}
 \citation{flashattention}
 \citation{flashattention2}
 \citation{flashinfer}
 \citation{triton}
 \citation{sglang}
+\@writefile{toc}{\contentsline {section}{\numberline {8}Reproducibility}{7}{section.8}\protected@file@percent }
+\newlabel{sec:repro}{{8}{7}{Reproducibility}{section.8}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces Reproducibility across 3 independent trials (warmup=20, iters=200).\relax }}{7}{table.caption.14}\protected@file@percent }
+\newlabel{tab:repro}{{13}{7}{Reproducibility across 3 independent trials (warmup=20, iters=200).\relax }{table.caption.14}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {9}Discussion}{7}{section.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.1}Implications for Compiler-Generated Attention}{7}{subsection.9.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.2}The Occupancy Paradox as Design Principle}{7}{subsection.9.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.3}MLA: Compression Shifts the Bottleneck}{7}{subsection.9.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.4}Selective Quantization: Quality Result}{7}{subsection.9.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.5}Limitations}{7}{subsection.9.5}\protected@file@percent }
 \citation{deepseekv2}
 \citation{deepseekv3}
+\citation{roofline}
 \citation{volkov2010}
 \citation{gptq}
 \citation{awq}
-\@writefile{toc}{\contentsline {subsection}{\numberline {9.2}The Occupancy Paradox as Design Principle}{7}{subsection.9.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {9.3}MLA: Compression Shifts the Bottleneck}{7}{subsection.9.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {9.4}The L2 Cache Barrier for Small-Matrix INT4}{7}{subsection.9.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {9.5}Selective Quantization: Quality Result}{7}{subsection.9.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {9.6}Limitations}{7}{subsection.9.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {10}Related Work}{7}{section.10}\protected@file@percent }
+\citation{kvquant}
+\citation{quarot}
 \bibstyle{plain}
 \bibdata{references}
-\bibcite{flashattention2}{1}
-\bibcite{flashattention}{2}
-\bibcite{deepseekv2}{3}
-\bibcite{deepseekv3}{4}
-\bibcite{gptq}{5}
-\bibcite{awq}{6}
-\bibcite{hopper}{7}
-\bibcite{triton}{8}
-\bibcite{volkov2010}{9}
-\bibcite{flashinfer}{10}
-\bibcite{sglang}{11}
+\bibcite{quarot}{1}
+\bibcite{flashattention2}{2}
+\bibcite{flashattention}{3}
+\bibcite{deepseekv2}{4}
+\bibcite{deepseekv3}{5}
+\bibcite{gptq}{6}
+\bibcite{kvquant}{7}
+\bibcite{awq}{8}
+\@writefile{toc}{\contentsline {section}{\numberline {10}Related Work}{8}{section.10}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {11}Conclusion}{8}{section.11}\protected@file@percent }
-\gdef \@abspage@last{8}
+\bibcite{hopper}{9}
+\bibcite{triton}{10}
+\bibcite{volkov2010}{11}
+\bibcite{roofline}{12}
+\bibcite{flashinfer}{13}
+\bibcite{sglang}{14}
+\gdef \@abspage@last{9}

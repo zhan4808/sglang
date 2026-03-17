@@ -1,5 +1,11 @@
 \begin{thebibliography}{10}
 
+\bibitem{quarot}
+Saleh Ashkboos, Amirkeivan Mohtashami, Maximilian~L. Croci, Bo~Li, Martin
+  Jaggi, Dan Alistarh, Torsten Hoefler, and James Hensman.
+\newblock Quarot: Outlier-free 4-bit inference in rotated llms.
+\newblock {\em arXiv preprint arXiv:2404.00456}, 2024.
+
 \bibitem{flashattention2}
 Tri Dao.
 \newblock Flashattention-2: Faster attention with better parallelism and work
@@ -29,6 +35,13 @@ Elias Frantar, Saleh Ashkboos, Torsten Hoefler, and Dan Alistarh.
   transformers.
 \newblock In {\em ICLR}, 2023.
 
+\bibitem{kvquant}
+Coleman Hooper, Sehoon Kim, Hiva Mohammadi, Michael~W. Mahoney, Yakun~Sophia
+  Shao, Kurt Keutzer, and Amir Gholami.
+\newblock Kvquant: Towards 10 million context length llm inference with kv
+  cache quantization.
+\newblock {\em arXiv preprint arXiv:2401.18079}, 2024.
+
 \bibitem{awq}
 Ji~Lin, Jiaming Tang, Haotian Tang, Shang Yang, Wei-Ming Chen, Wei-Chen Wang,
   Guangxuan Xiao, Xingyu Dang, Chuang Gan, and Song Han.
@@ -51,6 +64,12 @@ Philippe Tillet, H.~T. Kung, and David Cox.
 Vasily Volkov.
 \newblock Better performance at lower occupancy.
 \newblock In {\em GPU Technology Conference}, 2010.
+
+\bibitem{roofline}
+Samuel Williams, Andrew Waterman, and David Patterson.
+\newblock Roofline: An insightful visual performance model for multicore
+  architectures.
+\newblock {\em Communications of the ACM}, 52(4):65--76, 2009.
 
 \bibitem{flashinfer}
 Zihao Ye, Lequn Lai, Ruihang Shao, Wuwei Zheng, and Tianqi Chen.
