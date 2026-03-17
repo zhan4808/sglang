@@ -1,0 +1,67 @@
+\begin{thebibliography}{10}
+
+\bibitem{flashattention2}
+Tri Dao.
+\newblock Flashattention-2: Faster attention with better parallelism and work
+  partitioning.
+\newblock In {\em ICLR}, 2024.
+
+\bibitem{flashattention}
+Tri Dao, Dan Fu, Stefano Ermon, Atri Rudra, and Christopher R{\'e}.
+\newblock Flashattention: Fast and memory-efficient exact attention with
+  io-awareness.
+\newblock In {\em NeurIPS}, 2022.
+
+\bibitem{deepseekv2}
+DeepSeek-AI.
+\newblock Deepseek-v2: A strong, economical, and efficient mixture-of-experts
+  language model.
+\newblock {\em arXiv preprint arXiv:2405.04434}, 2024.
+
+\bibitem{deepseekv3}
+DeepSeek-AI.
+\newblock Deepseek-v3 technical report.
+\newblock {\em arXiv preprint arXiv:2412.19437}, 2024.
+
+\bibitem{gptq}
+Elias Frantar, Saleh Ashkboos, Torsten Hoefler, and Dan Alistarh.
+\newblock Gptq: Accurate post-training quantization for generative pre-trained
+  transformers.
+\newblock In {\em ICLR}, 2023.
+
+\bibitem{awq}
+Ji~Lin, Jiaming Tang, Haotian Tang, Shang Yang, Wei-Ming Chen, Wei-Chen Wang,
+  Guangxuan Xiao, Xingyu Dang, Chuang Gan, and Song Han.
+\newblock Awq: Activation-aware weight quantization for llm compression and
+  acceleration.
+\newblock In {\em MLSys}, 2024.
+
+\bibitem{hopper}
+NVIDIA.
+\newblock Nvidia h100 tensor core gpu architecture.
+\newblock \url{https://resources.nvidia.com/en-us-tensor-core}, 2022.
+
+\bibitem{triton}
+Philippe Tillet, H.~T. Kung, and David Cox.
+\newblock Triton: An intermediate language and compiler for tiled neural
+  network computations.
+\newblock In {\em MAPL}, 2019.
+
+\bibitem{volkov2010}
+Vasily Volkov.
+\newblock Better performance at lower occupancy.
+\newblock In {\em GPU Technology Conference}, 2010.
+
+\bibitem{flashinfer}
+Zihao Ye, Lequn Lai, Ruihang Shao, Wuwei Zheng, and Tianqi Chen.
+\newblock Flashinfer: Efficient and customizable attention engine for llm
+  inference serving.
+\newblock In {\em MLSys}, 2025.
+
+\bibitem{sglang}
+Lianmin Zheng, Liangsheng Yin, Zhiqiang Xie, Jeff Huang, Chuyue Sun, Cody~Hao
+  Yu, Shiyi Cao, Christos Kober, Yineng Shi, et~al.
+\newblock Sglang: Efficient execution of structured language model programs.
+\newblock In {\em NeurIPS}, 2024.
+
+\end{thebibliography}

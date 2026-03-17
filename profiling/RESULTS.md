@@ -352,3 +352,55 @@ gpu__time_duration.sum \
 
 # Same command with --backend triton for comparison
 ```
+
+---
+
+## 7. INT4 Perplexity Evaluation
+
+**Binary gate**: Does INT4 quantization of MLA reconstruction weights preserve model quality?
+
+### Setup
+- Model: DeepSeek-V2-Lite (15.7B params, 27 MLA layers)
+- Dataset: wikitext-2-raw-v1 test set (308,192 tokens)
+- Method: Per-channel asymmetric INT4 (4-bit = 16 levels), simulated round-trip quantization
+- Sliding window: stride=512, max_length=2048
+
+### Results
+
+| Configuration | PPL | Δ from FP16 | Weights Quantized |
+|--------------|------|-------------|-------------------|
+| FP16 baseline | 5.727 | — | 0 |
+| **INT4 selective** (kv_b_proj only) | **5.777** | **+0.051** | 27 |
+| INT4 all linear weights | 11.784 | +6.057 | 5,209 |
+
+### Analysis
+
+**Selective INT4 passes the quality gate decisively**: +0.051 PPL is an order of magnitude below the typical 0.5 threshold.
+
+**Why reconstruction weights are quantization-friendly**:
+1. Low-rank structure: kv_b_proj projects from a 512-dim compressed latent to 128-dim head spaces — the latent space was trained to be compressible
+2. Head redundancy: 128 heads independently project from the same latent; per-head quantization errors are averaged
+3. Post-softmax attenuation: BMM2 operates on attention-weighted values; sparse softmax attenuates quantization noise
+
+**Naive INT4 fails catastrophically**: Quantizing all 5,209 linear weights (including FFN, attention Q/O projections) more than doubles perplexity. This confirms that selective quantization is essential.
+
+### Theoretical INT4 Speedup (Roofline)
+
+Since reconstruction BMMs are memory-bound at all batch sizes, speedup ≈ ratio of total bytes transferred:
+
+| BS | FP16 Total (MB) | INT4 Total (MB) | Theoretical Speedup |
+|----|-----------------|-----------------|-------------------|
+| 1 | 16.03 | 4.03 | 3.94x |
+| 4 | 16.13 | 4.13 | 3.89x |
+| 16 | 16.50 | 4.50 | 3.67x |
+| 64 | 18.00 | 6.00 | 3.00x |
+| 128 | 20.00 | 8.00 | 2.50x |
+| 256 | 24.00 | 12.00 | 2.00x |
+
+At bs=1 (latency-critical): **3.94x speedup → 2.17ms → 0.55ms full-model reconstruction overhead**.
+
+### Script
+```bash
+python3 profiling/eval_int4_perplexity.py
+# Output: profiling/results_int4_perplexity.json
+```

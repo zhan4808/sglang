@@ -1,0 +1,115 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyperFirstAtBeginDocument{\AtBeginDocument}
+\HyperFirstAtBeginDocument{\ifx\hyper@anchor\@undefined
+\global\let\oldcontentsline\contentsline
+\gdef\contentsline#1#2#3#4{\oldcontentsline{#1}{#2}{#3}}
+\global\let\oldnewlabel\newlabel
+\gdef\newlabel#1#2{\newlabelxx{#1}#2}
+\gdef\newlabelxx#1#2#3#4#5#6{\oldnewlabel{#1}{{#2}{#3}}}
+\AtEndDocument{\ifx\hyper@anchor\@undefined
+\let\contentsline\oldcontentsline
+\let\newlabel\oldnewlabel
+\fi}
+\fi}
+\global\let\hyper@last\relax 
+\gdef\HyperFirstAtBeginDocument#1{#1}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{flashinfer}
+\citation{triton}
+\citation{sglang}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {2}Experimental Setup}{2}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Hardware}{2}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Software}{2}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Model Configurations}{2}{subsection.2.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Attention configurations profiled.\relax }}{2}{table.caption.2}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{tab:configs}{{1}{2}{Attention configurations profiled.\relax }{table.caption.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Methodology}{2}{subsection.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Results: Decode Attention (Memory-Bound)}{2}{section.3}\protected@file@percent }
+\newlabel{sec:decode}{{3}{2}{Results: Decode Attention (Memory-Bound)}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Bandwidth Scaling}{2}{subsection.3.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Decode performance, Llama-3-8B GQA, $L_{kv}=2048$.\relax }}{2}{table.caption.3}\protected@file@percent }
+\newlabel{tab:decode_bs}{{2}{2}{Decode performance, Llama-3-8B GQA, $L_{kv}=2048$.\relax }{table.caption.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Decode performance, Llama-3-8B GQA, bs=64, varying $L_{kv}$.\relax }}{2}{table.caption.4}\protected@file@percent }
+\newlabel{tab:decode_kv}{{3}{2}{Decode performance, Llama-3-8B GQA, bs=64, varying $L_{kv}$.\relax }{table.caption.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}NCU Kernel Analysis}{2}{subsection.3.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces NCU metrics, decode, bs=64, $L_{kv}=2048$.\relax }}{2}{table.caption.5}\protected@file@percent }
+\newlabel{tab:ncu_decode}{{4}{2}{NCU metrics, decode, bs=64, $L_{kv}=2048$.\relax }{table.caption.5}{}}
+\citation{hopper}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Results: Prefill Attention (Compute-Bound)}{3}{section.4}\protected@file@percent }
+\newlabel{sec:prefill}{{4}{3}{Results: Prefill Attention (Compute-Bound)}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}TFLOPS Scaling}{3}{subsection.4.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Prefill performance, Llama-3-8B GQA. TFLOPS uses corrected formula ($4 B S^2 H d / 2$).\relax }}{3}{table.caption.6}\protected@file@percent }
+\newlabel{tab:prefill}{{5}{3}{Prefill performance, Llama-3-8B GQA. TFLOPS uses corrected formula ($4 B S^2 H d / 2$).\relax }{table.caption.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}NCU Root Cause Analysis}{3}{subsection.4.2}\protected@file@percent }
+\newlabel{sec:prefill_ncu}{{4.2}{3}{NCU Root Cause Analysis}{subsection.4.2}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.1}Finding: TMA vs.\ Global Loads (Not ``Cache Hit Rate'')}{3}{subsubsection.4.2.1}\protected@file@percent }
+\newlabel{sec:tma}{{4.2.1}{3}{Finding: TMA vs.\ Global Loads (Not ``Cache Hit Rate'')}{subsubsection.4.2.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces NCU metrics, prefill, bs=4, $S=2048$.\relax }}{3}{table.caption.7}\protected@file@percent }
+\newlabel{tab:ncu_prefill}{{6}{3}{NCU metrics, prefill, bs=4, $S=2048$.\relax }{table.caption.7}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.2}Finding: No Register Spills (Occupancy-Only Bottleneck)}{3}{subsubsection.4.2.2}\protected@file@percent }
+\newlabel{sec:spills}{{4.2.2}{3}{Finding: No Register Spills (Occupancy-Only Bottleneck)}{subsubsection.4.2.2}{}}
+\citation{deepseekv2}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.3}Finding: Cooperative Grid vs.\ Wave Quantization}{4}{subsubsection.4.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}MLA Reconstruction GEMM Overhead}{4}{section.5}\protected@file@percent }
+\newlabel{sec:recon}{{5}{4}{MLA Reconstruction GEMM Overhead}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Cost Breakdown: DeepSeek-V3 Architecture}{4}{subsection.5.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces MLA reconstruction overhead per layer, DeepSeek-V3 shapes, $L_{kv}=2048$. Reconstruction cost is independent of KV length.\relax }}{4}{table.caption.8}\protected@file@percent }
+\newlabel{tab:recon}{{7}{4}{MLA reconstruction overhead per layer, DeepSeek-V3 shapes, $L_{kv}=2048$. Reconstruction cost is independent of KV length.\relax }{table.caption.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Roofline Analysis: Memory-Bound at All Batch Sizes}{4}{subsection.5.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Arithmetic intensity and achieved bandwidth for reconstruction BMMs. H100 roofline crossover: AI = 295 (990\nobreakspace  {}TFLOPS / 3.35\nobreakspace  {}TB/s).\relax }}{4}{table.caption.9}\protected@file@percent }
+\newlabel{tab:roofline}{{8}{4}{Arithmetic intensity and achieved bandwidth for reconstruction BMMs. H100 roofline crossover: AI = 295 (990~TFLOPS / 3.35~TB/s).\relax }{table.caption.9}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}INT4 Reconstruction Weight Quantization}{5}{section.6}\protected@file@percent }
+\newlabel{sec:int4}{{6}{5}{INT4 Reconstruction Weight Quantization}{section.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Perplexity Evaluation}{5}{subsection.6.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Wikitext-2 perplexity under INT4 quantization. \texttt  {kv\_b\_proj} is the reconstruction weight ($W^\text  {kc}$/$W^\text  {vc}$ combined).\relax }}{5}{table.caption.10}\protected@file@percent }
+\newlabel{tab:ppl}{{9}{5}{Wikitext-2 perplexity under INT4 quantization. \texttt {kv\_b\_proj} is the reconstruction weight ($W^\text {kc}$/$W^\text {vc}$ combined).\relax }{table.caption.10}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Why Reconstruction Weights Are Quantization-Friendly}{5}{subsection.6.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Theoretical Speedup}{5}{subsection.6.3}\protected@file@percent }
+\newlabel{eq:speedup}{{1}{5}{Theoretical Speedup}{equation.6.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Theoretical INT4 speedup for reconstruction BMMs. Weight bytes dominate at small batch sizes.\relax }}{5}{table.caption.11}\protected@file@percent }
+\newlabel{tab:int4_speedup}{{10}{5}{Theoretical INT4 speedup for reconstruction BMMs. Weight bytes dominate at small batch sizes.\relax }{table.caption.11}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}End-to-End Context}{5}{section.7}\protected@file@percent }
+\newlabel{sec:e2e}{{7}{5}{End-to-End Context}{section.7}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Decode step decomposition, Qwen2.5-7B, bs=64.\relax }}{5}{table.caption.12}\protected@file@percent }
+\newlabel{tab:e2e}{{11}{5}{Decode step decomposition, Qwen2.5-7B, bs=64.\relax }{table.caption.12}{}}
+\citation{volkov2010}
+\@writefile{toc}{\contentsline {section}{\numberline {8}Reproducibility}{6}{section.8}\protected@file@percent }
+\newlabel{sec:repro}{{8}{6}{Reproducibility}{section.8}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces Reproducibility across 3 independent trials (warmup=20, iters=200).\relax }}{6}{table.caption.13}\protected@file@percent }
+\newlabel{tab:repro}{{12}{6}{Reproducibility across 3 independent trials (warmup=20, iters=200).\relax }{table.caption.13}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {9}Discussion}{6}{section.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.1}Implications for Compiler-Generated Attention}{6}{subsection.9.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.2}The Occupancy Paradox as Design Principle}{6}{subsection.9.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.3}MLA: Compression Shifts the Bottleneck}{6}{subsection.9.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.4}Selective Quantization as a Design Principle}{6}{subsection.9.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.5}Limitations}{6}{subsection.9.5}\protected@file@percent }
+\citation{flashattention}
+\citation{flashattention2}
+\citation{flashinfer}
+\citation{triton}
+\citation{sglang}
+\citation{deepseekv2}
+\citation{deepseekv3}
+\citation{volkov2010}
+\citation{gptq}
+\citation{awq}
+\bibstyle{plain}
+\bibdata{references}
+\bibcite{flashattention2}{1}
+\bibcite{flashattention}{2}
+\bibcite{deepseekv2}{3}
+\bibcite{deepseekv3}{4}
+\bibcite{gptq}{5}
+\bibcite{awq}{6}
+\bibcite{hopper}{7}
+\bibcite{triton}{8}
+\bibcite{volkov2010}{9}
+\bibcite{flashinfer}{10}
+\bibcite{sglang}{11}
+\@writefile{toc}{\contentsline {section}{\numberline {10}Related Work}{7}{section.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {11}Conclusion}{7}{section.11}\protected@file@percent }
+\gdef \@abspage@last{7}
