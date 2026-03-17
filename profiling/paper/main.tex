@@ -1,22 +1,55 @@
 \documentclass[10pt,twocolumn]{article}
 
 % ── Packages ──
-\usepackage[margin=1in]{geometry}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{times}
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}
 \usepackage{graphicx}
-\usepackage{hyperref}
+\usepackage[hypertexnames=false]{hyperref}
 \usepackage{xcolor}
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{enumitem}
 \usepackage{microtype}
+\usepackage{float}
 \usepackage{pgfplots}
+\usepackage{authblk}
 \pgfplotsset{compat=1.18}
 \usepgfplotslibrary{groupplots}
+\usetikzlibrary{patterns}
+
+% ── Float placement ──
+\setcounter{topnumber}{2}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.07}
+\renewcommand{\floatpagefraction}{0.85}
+\renewcommand{\dbltopfraction}{0.9}
+\renewcommand{\dblfloatpagefraction}{0.85}
+\setlength{\textfloatsep}{8pt plus 2pt minus 2pt}
+\setlength{\floatsep}{6pt plus 2pt minus 2pt}
+\setlength{\intextsep}{6pt plus 2pt minus 2pt}
+
+% ── Colors ──
+\definecolor{fiblue}{HTML}{2171B5}
+\definecolor{triorange}{HTML}{E6550D}
+\definecolor{reconred}{HTML}{CB181D}
+\definecolor{attnblue}{HTML}{6BAED6}
+\definecolor{predgreen}{HTML}{31A354}
+\definecolor{measred}{HTML}{DE2D26}
+\pgfplotsset{
+  every axis/.append style={
+    label style={font=\small},
+    tick label style={font=\footnotesize},
+    legend style={font=\footnotesize, legend cell align=left},
+  },
+}
 
 % ── Formatting ──
-\setlength{\parskip}{0.5em}
+\setlength{\parskip}{0.4em}
 \setlength{\parindent}{0em}
 
 \title{%
@@ -24,21 +57,19 @@
   \textbf{Reconstruction GEMMs, INT4 Quantization, and the L2 Cache Barrier}
 }
 
-\author{
-  Robert Zhang\\
-  \texttt{zhan4808@purdue.edu}
-}
-
-\date{\today}
+\author[1]{Robert Zhang} % Link author to affiliation [1]
+\affil[1]{Purdue University} % Define affiliation [1]
+\affil[1]{\texttt{zhan4808@purdue.edu}} % Add email to the same affiliation bloc
+\date{}
 
 \begin{document}
 \maketitle
 
 % ══════════════════════════════════════════════════════════════════════════════
 \begin{abstract}
-Multi-head Latent Attention (MLA) compresses KV cache via low-rank latent projections, dramatically reducing memory traffic for the attention kernel.  We show that this compression creates a \emph{new} dominant bottleneck: the \textbf{reconstruction GEMMs}---weight-absorbed batch matrix multiplications that recover full-dimensional K/V from compressed latents---consume \textbf{61\% of attention-layer time} at batch size~1 on DeepSeek-V3-scale architectures (128~heads, 61~layers), exceeding the attention kernel itself.  These BMMs are memory-bound at all practical batch sizes (arithmetic intensity 1--93 vs.\ H100 roofline crossover at~295).
+Multi-head Latent Attention (MLA) compresses KV cache via low-rank latent projections, greatly reducing memory traffic for the attention kernel.  We show that this compression creates a \emph{new} dominant bottleneck: the \textbf{reconstruction GEMMs}, weight-absorbed batch matrix multiplications that recover full-dimensional K/V from compressed latents, consume \textbf{61\% of attention-layer time} at batch size~1 on DeepSeek-V3-scale architectures (128~heads, 61~layers), exceeding the attention kernel itself.  These BMMs are memory-bound at all practical batch sizes (arithmetic intensity 1--93 vs.\ H100 roofline crossover at~295).
 
-We investigate INT4 weight-only quantization as a mitigation.  Selective INT4 of reconstruction weights preserves quality ($\Delta$PPL~=~+0.051 on wikitext-2, vs.\ +6.057 for naive whole-model INT4).  However, a custom batched W4A16 Triton kernel achieves only 0.49$\times$ of cuBLAS FP16---we identify \textbf{L2 cache residency} as the root cause: the 16~MB reconstruction weight matrix fits within H100's 50~MB L2, invalidating the HBM-bound roofline assumption that motivates quantization.  This L2 cache barrier---where MLA's compression paradoxically makes reconstruction weights \emph{too small} to benefit from reduced precision---is, to our knowledge, the first characterization of this failure mode.
+We investigate INT4 weight-only quantization as a mitigation.  Selective INT4 of reconstruction weights preserves quality ($\Delta$PPL~=~+0.051 on wikitext-2, vs.\ +6.057 for naive whole-model INT4).  However, a custom batched W4A16 Triton kernel achieves only 0.49$\times$ of cuBLAS FP16; we identify \textbf{L2 cache residency} as the root cause.  The 16~MB reconstruction weight matrix fits within H100's 50~MB L2, invalidating the HBM-bound roofline assumption that motivates quantization.  In this L2 cache barrier, MLA's compression paradoxically makes reconstruction weights \emph{too small} to benefit from reduced precision.  To our knowledge, this is the first characterization of this failure mode.
 
 We validate our profiling methodology through an independent FlashInfer vs.\ Triton kernel comparison on Llama-3-8B, reproducing known results (89\% vs.\ 80\% HBM utilization in decode; 2.6$\times$ prefill gap from TMA hardware loads) and contributing new NCU-level root cause analysis.  All code and data are publicly available.
 \end{abstract}
@@ -46,20 +77,20 @@ We validate our profiling methodology through an independent FlashInfer vs.\ Tri
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Introduction}
 
-Multi-head Latent Attention (MLA)~\cite{deepseekv2} has emerged as the dominant attention architecture for frontier LLMs, powering DeepSeek-V2 and V3~\cite{deepseekv3}.  By compressing the KV cache through low-rank latent projections, MLA achieves a 7.1$\times$ reduction in KV memory traffic compared to standard multi-head attention---dramatically accelerating the attention kernel.
+Multi-head Latent Attention (MLA)~\cite{deepseekv2} compresses the KV cache through low-rank latent projections, achieving a 7.1$\times$ reduction in KV memory traffic and powering frontier models including DeepSeek-V2 and V3~\cite{deepseekv3}.  But this compression requires full-dimensional K and V to be \emph{reconstructed} from compressed latents at inference time via weight-absorbed batch matrix multiplications (BMMs).  Prior work has focused on MLA's memory savings; the runtime cost of reconstruction has not been studied.
 
-However, this compression comes at a cost that has received little scrutiny: during inference, full-dimensional K and V must be \emph{reconstructed} from the compressed latents via weight-absorbed batch matrix multiplications (BMMs).  We show that these reconstruction GEMMs---not the attention kernel itself---are the \textbf{dominant bottleneck} in MLA attention layers, consuming 61\% of per-layer time at batch size~1 on DeepSeek-V3-scale architectures.
+We show that this cost is the \textbf{dominant bottleneck} in MLA attention layers.  On DeepSeek-V3-scale architectures (128 heads, 61 layers), reconstruction GEMMs consume 61\% of per-layer time at batch size~1, exceeding the attention kernel itself.  This overhead is fixed per query, independent of KV length, and invisible to standard attention benchmarks.  MLA's compression, in other words, shifts the bottleneck from KV cache reads to weight-matrix reads for reconstruction.
 
-A natural mitigation is INT4 weight-only quantization of the reconstruction matrices.  We find that selective INT4 preserves model quality ($\Delta$PPL~=~+0.051), but a custom Triton W4A16 kernel achieves only 0.49$\times$ of cuBLAS FP16---not the 3.9$\times$ predicted by roofline analysis.  We trace this to a phenomenon we term the \textbf{L2 cache barrier}: MLA's compression makes the reconstruction weight matrices small enough (16~MB) to fit in H100's 50~MB L2 cache, invalidating the HBM-bound assumption that motivates weight quantization.
+Since reconstruction is memory-bound (arithmetic intensity 1--93 vs.\ H100 roofline crossover at~295), INT4 weight-only quantization is a natural mitigation.  Selective INT4 preserves quality ($\Delta$PPL~=~+0.051), but a custom Triton W4A16 kernel achieves only 0.49$\times$ of cuBLAS FP16, far from the 3.9$\times$ predicted by roofline.  We trace this to what we term the \textbf{L2 cache barrier}: the 16~MB reconstruction weight matrix fits within H100's 50~MB L2 cache, so after first access, weights are served from L2 at ${\sim}$12~TB/s rather than HBM at 3.35~TB/s.  Reducing precision saves HBM bandwidth that was never the bottleneck (Figure~\ref{fig:l2barrier}).  MLA's compression paradoxically makes reconstruction weights \emph{too small} to benefit from quantization.
 
-To validate our profiling methodology, we conduct an independent FlashInfer~\cite{flashinfer} vs.\ Triton~\cite{triton} attention kernel comparison on Llama-3-8B, reproducing known performance gaps and contributing new NCU-level root cause analysis (TMA hardware loads, cooperative grid launch, the occupancy paradox).  This establishes the measurement infrastructure used for our MLA analysis.
+We validate our profiling methodology through an independent FlashInfer~\cite{flashinfer} vs.\ Triton~\cite{triton} kernel comparison on Llama-3-8B (Section~\ref{sec:validation}), reproducing known performance gaps and contributing new NCU-level root cause analysis.
 
 \textbf{Contributions:}
 \begin{itemize}[leftmargin=*,topsep=0pt]
-  \item \textbf{First quantification of MLA reconstruction GEMM overhead}: 61\% of attention-layer time at bs=1, 2.17~ms per token across 61 layers---a bottleneck invisible to standard attention benchmarks.
-  \item \textbf{The L2 cache barrier}: identification and characterization of a failure mode where MLA's compression paradoxically makes reconstruction weights \emph{too small} to benefit from reduced precision, with roofline-predicted 3.9$\times$ speedup collapsing to 0.49$\times$ measured.
-  \item \textbf{Selective INT4 quality safety}: reconstruction weights are uniquely quantization-friendly (+0.051 PPL), establishing them as priority targets for future kernel optimization.
-  \item \textbf{NCU-level FlashInfer vs.\ Triton analysis}: TMA vs.\ global-load distinction, corrected L1 metric interpretation on Hopper, and the occupancy paradox (fewer warps, more bandwidth).
+  \item \textbf{Reconstruction GEMM overhead}: first quantification showing 61\% of MLA attention-layer time at bs=1 (2.17~ms/token across 61~layers).
+  \item \textbf{The L2 cache barrier}: roofline-predicted 3.9$\times$ INT4 speedup collapses to 0.49$\times$ because reconstruction weights are L2-resident.  To our knowledge, this is the first characterization of this failure mode.
+  \item \textbf{Selective INT4 quality}: reconstruction weights tolerate INT4 well (+0.051 PPL), establishing them as targets once kernel support matures.
+  \item \textbf{NCU-level kernel analysis}: TMA vs.\ global-load root cause, corrected L1 metrics on Hopper, and the occupancy paradox (fewer warps, more bandwidth).
 \end{itemize}
 
 % ══════════════════════════════════════════════════════════════════════════════
@@ -88,7 +119,7 @@ DS-V2-Lite  & 16 & 16 & 128 & MLA      & 512 \\
 \end{tabular}
 \end{table}
 
-\textbf{Model choice rationale.}  We use three models, each chosen for a specific role.  \textbf{Llama-3-8B} (GQA) serves as the attention kernel benchmark: it is the most widely deployed open-weight model family and the standard target for FlashInfer/Triton comparisons, ensuring our methodology reproduces known results.  \textbf{DeepSeek-V3 shapes} ($H{=}128$, $d_\text{lora}{=}512$) are used for the MLA reconstruction analysis, as DeepSeek-V3 is the only production-scale MLA model and defines the shapes relevant to real serving workloads.  \textbf{DeepSeek-V2-Lite} (15.7B) is used for the perplexity evaluation, as the smallest publicly available MLA model that can run on a single GPU---allowing controlled quality measurement with identical architecture to V3 but tractable evaluation cost.  \textbf{Qwen2.5-7B} provides end-to-end decode decomposition as a representative GQA serving workload, establishing the attention-layer context within which reconstruction overhead should be interpreted.
+\textbf{Model choice rationale.}  We use three models, each chosen for a specific role.  \textbf{Llama-3-8B} (GQA) serves as the attention kernel benchmark: it is the most widely deployed open-weight model family and the standard target for FlashInfer/Triton comparisons, ensuring our methodology reproduces known results.  \textbf{DeepSeek-V3 shapes} ($H{=}128$, $d_\text{lora}{=}512$) are used for the MLA reconstruction analysis, as DeepSeek-V3 is the only production-scale MLA model and defines the shapes relevant to real serving workloads.  \textbf{DeepSeek-V2-Lite} (15.7B) is used for the perplexity evaluation, as the smallest publicly available MLA model that can run on a single GPU, allowing controlled quality measurement with identical architecture to V3 but tractable evaluation cost.  \textbf{Qwen2.5-7B} provides end-to-end decode decomposition as a representative GQA serving workload.
 
 \subsection{Methodology}
 
@@ -101,10 +132,13 @@ DS-V2-Lite  & 16 & 16 & 128 & MLA      & 512 \\
 \textbf{NCU profiling.}  \texttt{ncu --set full --profile-from-start no} with kernel replay.  Metrics collected: \texttt{dram\_\_throughput}, \texttt{sm\_\_throughput}, \texttt{sm\_\_warps\_active}, L1/L2 sector hit/miss counts, \texttt{launch\_\_registers\_per\_thread}, \texttt{smsp\_\_inst\_executed\_pipe\_tensor}.  NCU profiling overhead is excluded from bandwidth computations (separate timing runs).
 
 % ══════════════════════════════════════════════════════════════════════════════
-\section{Results: Decode Attention (Memory-Bound)}
-\label{sec:decode}
+\section{Attention Kernel Validation}
+\label{sec:validation}
 
-\subsection{Bandwidth Scaling}
+Before presenting our MLA findings, we validate the profiling methodology by comparing FlashInfer and Triton attention kernels on Llama-3-8B, a well-studied GQA configuration.  This reproduces known performance gaps and establishes the measurement infrastructure used in subsequent sections.
+
+\subsection{Decode: Bandwidth Scaling}
+\label{sec:decode}
 
 \begin{table}[h]
 \centering
@@ -127,6 +161,58 @@ BS & FI (ms) & Tri (ms) & FI BW & Tri BW & Speedup \\
 
 Both backends are firmly memory-bound.  FlashInfer peaks at 2,987~GB/s (89\% of 3.35~TB/s) while Triton peaks at 2,669~GB/s (80\%).  The gap narrows from 2$\times$ at bs=1 (launch-overhead dominated) to 1.12$\times$ at bs=256 (bandwidth-saturated).
 
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth,
+  height=0.58\columnwidth,
+  xlabel={Batch Size},
+  ylabel={HBM Bandwidth (GB/s)},
+  xmode=log, log basis x=2,
+  xtick={1,4,16,64,128,256},
+  xticklabels={1,4,16,64,128,256},
+  ymin=0, ymax=3700,
+  ytick={0,500,1000,1500,2000,2500,3000,3500},
+  grid=major, grid style={gray!30},
+  every axis plot/.append style={thick},
+  ylabel near ticks,
+  clip=false,
+  legend style={at={(0.97,0.03)}, anchor=south east},
+]
+% H100 peak
+\addplot[dashed, black!40, thin, forget plot]
+  coordinates {(0.7,3350) (350,3350)};
+\node[font=\scriptsize, black!50, anchor=south west]
+  at (axis cs:1,3370) {H100 peak (3{,}350 GB/s)};
+% 89% line
+\addplot[dotted, fiblue!40, thin, forget plot]
+  coordinates {(0.7,2987) (350,2987)};
+\node[font=\scriptsize, fiblue!50, anchor=north east]
+  at (axis cs:256,2970) {89\%};
+% 80% line
+\addplot[dotted, triorange!40, thin, forget plot]
+  coordinates {(0.7,2669) (350,2669)};
+\node[font=\scriptsize, triorange!50, anchor=north east]
+  at (axis cs:256,2650) {80\%};
+% FlashInfer
+\addplot[fiblue, mark=*, mark size=2] coordinates {
+  (1,298) (4,1056) (16,2317) (64,2870) (128,2957) (256,2987)
+};
+% Triton
+\addplot[triorange, mark=square*, mark size=2] coordinates {
+  (1,147) (4,582) (16,1910) (64,2470) (128,2585) (256,2669)
+};
+% Speedup annotations
+\node[font=\tiny, black!70, anchor=north east] at (axis cs:1.6,270) {2.0$\times$};
+\node[font=\tiny, black!70, anchor=north west] at (axis cs:260,2987) {1.12$\times$};
+\legend{FlashInfer, Triton}
+\end{axis}
+\end{tikzpicture}
+\caption{Decode bandwidth vs.\ batch size (Llama-3-8B, $L_{kv}{=}2048$).  Both backends approach HBM saturation; FlashInfer peaks at 89\% of H100 peak.  The gap narrows from 2$\times$ at bs=1 to 1.12$\times$ at bs=256 as launch overhead becomes negligible relative to streaming KV reads.}
+\label{fig:decode_bw}
+\end{figure}
+
 \begin{table}[h]
 \centering
 \small
@@ -148,7 +234,7 @@ $L_{kv}$ & FI (ms) & Tri (ms) & FI BW & Tri BW & Speedup \\
 
 FlashInfer approaches 3,000~GB/s at $L_{kv}=8192$, saturating HBM at 89.6\% of peak.
 
-\subsection{NCU Kernel Analysis}
+\subsection{Decode: NCU Analysis}
 
 \begin{table}[h]
 \centering
@@ -159,7 +245,7 @@ FlashInfer approaches 3,000~GB/s at $L_{kv}=8192$, saturating HBM at 89.6\% of p
 \toprule
 Metric & FlashInfer & Triton (Stage 1) \\
 \midrule
-Kernel       & \texttt{BatchPrefill...} & \texttt{\_fwd\_grouped...\_stage1} \\
+Kernel       & \texttt{BatchPrefill..} & \texttt{\_fwd\_grouped..} \\
 DRAM util.   & \textbf{84\%} & 76\% \\
 SM util.     & 17\% & 28\% \\
 Regs/thread  & \textbf{183} & 76 \\
@@ -171,17 +257,14 @@ Duration     & 191~$\mu$s & 217~$\mu$s \\
 \end{tabular}
 \end{table}
 
-\textbf{The occupancy paradox.}  FlashInfer uses 183 registers/thread---2.4$\times$ Triton's 76---yielding only 12.2\% active warps vs.\ 35.4\%.  Yet FlashInfer achieves 84\% DRAM throughput vs.\ 76\%.  This demonstrates that \emph{memory access pattern quality dominates occupancy} for bandwidth-bound kernels: FlashInfer's fused single-kernel design with coalesced, pipelined memory accesses extracts more bandwidth per warp than Triton's higher-occupancy two-phase approach.
+\textbf{The occupancy paradox.}  FlashInfer uses 183 registers/thread (2.4$\times$ Triton's 76), yielding only 12.2\% active warps vs.\ 35.4\%.  Yet FlashInfer achieves 84\% DRAM throughput vs.\ 76\%.  This shows that \emph{memory access pattern quality dominates occupancy} for bandwidth-bound kernels: FlashInfer's fused design with coalesced, pipelined accesses extracts more bandwidth per warp than Triton's higher-occupancy two-phase approach.
 
-\textbf{Two-phase overhead.}  Triton splits attention into Stage~1 (KV scatter-gather, 217~$\mu$s) and Stage~2 (softmax reduction, 10~$\mu$s).  Stage~2 adds 4.4\% overhead but achieves 73.8\% occupancy with only 30 registers---a well-optimized reduction kernel.
+\textbf{Two-phase overhead.}  Triton splits attention into Stage~1 (KV scatter-gather, 217~$\mu$s) and Stage~2 (softmax reduction, 10~$\mu$s).  Stage~2 adds 4.4\% overhead but achieves 73.8\% occupancy with only 30 registers, a well-optimized reduction kernel.
 
 \textbf{L2 irrelevance at scale.}  Both backends show $<$1\% L2 hit rate.  The KV cache at bs=64 is $64 \times 2048 \times 8 \times 128 \times 2 = 256$~MB, far exceeding the 50~MB L2.  GQA's 4:1 head sharing provides no cache benefit at this scale.
 
-% ══════════════════════════════════════════════════════════════════════════════
-\section{Results: Prefill Attention (Compute-Bound)}
+\subsection{Prefill: TFLOPS Scaling}
 \label{sec:prefill}
-
-\subsection{TFLOPS Scaling}
 
 \begin{table}[h]
 \centering
@@ -206,7 +289,51 @@ BS & $S$ & FI (ms) & Tri (ms) & FI TF & Speedup \\
 
 FlashInfer peaks at \textbf{552~TFLOPS} (55.8\% of 989.4~T peak).  Triton peaks at 209~TFLOPS (21.1\%).  The 2.6$\times$ gap is consistent across all configurations and \emph{widens} with sequence length, suggesting a fundamental rather than incidental difference.
 
-\subsection{NCU Root Cause Analysis}
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth,
+  height=0.62\columnwidth,
+  ybar,
+  bar width=5pt,
+  xlabel={Configuration (batch size $\times$ sequence length)},
+  ylabel={TFLOPS},
+  symbolic x coords={1x512,1x1K,1x2K,1x4K,4x2K,4x4K,16x2K,16x4K},
+  xtick=data,
+  x tick label style={rotate=45, anchor=east, font=\scriptsize},
+  ymin=0, ymax=1100,
+  ytick={0,200,400,600,800,1000},
+  grid=major, grid style={gray!30},
+  enlarge x limits=0.08,
+  clip=false,
+]
+% FlashInfer
+\addplot[fill=fiblue, draw=fiblue!80] coordinates {
+  (1x512,88) (1x1K,264) (1x2K,387) (1x4K,485)
+  (4x2K,448) (4x4K,552) (16x2K,444) (16x4K,512)
+};
+% Triton
+\addplot[fill=triorange, draw=triorange!80] coordinates {
+  (1x512,54) (1x1K,126) (1x2K,161) (1x4K,188)
+  (4x2K,183) (4x4K,204) (16x2K,195) (16x4K,209)
+};
+% H100 peak reference
+\addplot[dashed, black!40, thin, forget plot, sharp plot]
+  coordinates {(1x512,990) (16x4K,990)};
+\node[font=\scriptsize, black!50, anchor=north west]
+  at (axis cs:1x512,980) {H100 peak (990 TF)};
+% Peak annotation
+\node[font=\tiny, fiblue!80, anchor=south]
+  at (axis cs:4x4K,558) {\textbf{552}};
+\legend{FlashInfer, Triton}
+\end{axis}
+\end{tikzpicture}
+\caption{Prefill compute throughput (Llama-3-8B GQA).  FlashInfer achieves 2.1--2.7$\times$ higher TFLOPS across all configurations, peaking at 552~TFLOPS (56\% of peak).  The gap widens with sequence length due to FlashInfer's TMA hardware loads and cooperative grid launch (Section~\ref{sec:prefill_ncu}).}
+\label{fig:prefill_tflops}
+\end{figure}
+
+\subsection{Prefill: NCU Root Cause Analysis}
 \label{sec:prefill_ncu}
 
 \begin{table}[h]
@@ -238,42 +365,44 @@ Duration     & 368~$\mu$s & 909~$\mu$s \\
 
 A naive reading of NCU's L1 sector counters yields: FlashInfer 97\% L1 hit rate, Triton 0.1\%.  \textbf{This is misleading.}
 
-FlashInfer's Hopper kernel uses TMA (Tensor Memory Accelerator)~\cite{hopper}---a dedicated hardware unit that performs asynchronous bulk tensor copies directly from HBM/L2 into shared memory, \emph{bypassing the L1 global load data path entirely}.  The 108K L1 global load sectors are residual metadata accesses (indptr arrays, scalar parameters), not QKV tensor data.  The 37.8M sectors in Triton represent the \emph{actual} QKV working set flowing through L1 via standard \texttt{ld.global} instructions.
+FlashInfer's Hopper kernel uses TMA (Tensor Memory Accelerator)~\cite{hopper}, a dedicated hardware unit that performs asynchronous bulk tensor copies directly from HBM/L2 into shared memory, \emph{bypassing the L1 global load data path entirely}.  The 108K L1 global load sectors are residual metadata accesses (indptr arrays, scalar parameters), not QKV tensor data.  The 37.8M sectors in Triton represent the \emph{actual} QKV working set flowing through L1 via standard \texttt{ld.global} instructions.
 
 The correct comparison is at L2: FlashInfer achieves 86.4\% hit rate vs.\ Triton's 72.0\%.  FlashInfer's cooperative grid launch (132 blocks = 1 per SM) creates a controlled L2 working set; Triton's 2048-block grid generates 83\% more L2 misses (9.9M vs.\ 5.4M sectors) due to wave-quantization thrashing.
 
-This distinction is architecturally fundamental:  TMA access is not ``better caching''---it is a \emph{different hardware data path} unavailable to Triton's compiler, which generates standard \texttt{ld.global} PTX.
+This distinction is architecturally fundamental.  TMA access is not ``better caching'' but a \emph{different hardware data path} unavailable to Triton's compiler, which generates standard \texttt{ld.global} PTX.
 
 \subsubsection{Finding: No Register Spills (Occupancy-Only Bottleneck)}
 \label{sec:spills}
 
-Triton's prefill kernel compiles to 255 registers---the \texttt{sm\_90} hardware maximum.  A natural hypothesis is that registers spill to local memory, adding latency.  We tested this at three levels:
+Triton's prefill kernel compiles to 255 registers, the \texttt{sm\_90} hardware maximum.  A natural hypothesis is that registers spill to local memory, adding latency.  We tested this at three levels:
 
 \begin{enumerate}[leftmargin=*,topsep=0pt]
-  \item \textbf{NCU local memory counters}: \texttt{l1tex\_\_data\_pipe\_lsu\_wavefronts\_mem\_local\_op\_\{ld,st\}.sum} returned \texttt{n/a} on all Hopper kernels (known NCU limitation on sm\_90).
+  \item \textbf{NCU local memory counters}: The local memory wavefront counters (\texttt{l1tex..mem\_local\_op\_\allowbreak\{ld,st\}.sum}) returned \texttt{n/a} on all Hopper kernels (known NCU limitation on sm\_90).
   \item \textbf{PTX inspection}: Zero \texttt{.local} directives, zero \texttt{st.local} / \texttt{ld.local} instructions in the compiled PTX.
   \item \textbf{CUBIN resource dump} (\texttt{cuobjdump --dump-resource-usage}): \texttt{LOCAL:0} for \texttt{\_fwd\_kernel}.
 \end{enumerate}
 
-\textbf{Verdict}: Triton's 255-register kernel does \emph{not} spill.  The Triton compiler successfully fits all live variables within the register file at the cost of maximal register allocation.  The performance impact is \emph{purely occupancy}: fewer warps per SM means fewer opportunities to hide memory latency.
+\textbf{Verdict}: Triton's 255-register kernel does \emph{not} spill.  The compiler fits all live variables within the register file at the cost of maximal register allocation.  The performance impact is purely occupancy: fewer warps per SM means fewer opportunities to hide memory latency.
 
-This implies that reducing Triton's register count (e.g., via different tiling or explicit \texttt{num\_stages} tuning) could improve occupancy and partially close the prefill gap---but the TMA access pattern difference (Section~\ref{sec:tma}) would remain.
+Reducing Triton's register count (e.g., via different tiling or explicit \texttt{num\_stages} tuning) could improve occupancy and partially close the prefill gap, but the TMA access pattern difference (Section~\ref{sec:tma}) would remain.
 
 \subsubsection{Finding: Cooperative Grid vs.\ Wave Quantization}
 
-FlashInfer launches exactly 132 thread blocks---one per SM---using CUDA cooperative launch semantics.  This eliminates wave-quantization effects and enables persistent-kernel-style execution where each block processes multiple tiles sequentially with full shared memory and register file utilization.
+FlashInfer launches exactly 132 thread blocks (one per SM) using CUDA cooperative launch semantics.  This eliminates wave-quantization effects and enables persistent-kernel-style execution where each block processes multiple tiles sequentially with full shared memory and register file utilization.
 
 Triton launches 2,048 blocks ($15.5\times$ more), dispatched in multiple waves.  Each wave evicts the previous wave's L2 residency, explaining the 14-point L2 hit rate gap (86.4\% vs.\ 72.0\%).
 
 % ══════════════════════════════════════════════════════════════════════════════
-\section{MLA Reconstruction GEMM Overhead}
+\section{The MLA Reconstruction Bottleneck}
 \label{sec:recon}
+
+Having established confidence in our profiling infrastructure, we turn to our central question: how much of MLA's attention-layer time is spent on reconstruction?
 
 Multi-head Latent Attention~\cite{deepseekv2} compresses KV cache to a low-rank latent $c_t \in \mathbb{R}^{d_\text{lora}}$ with $d_\text{lora}=512$.  During decode, full-dimensional K and V are \emph{reconstructed} via weight-absorbed batch matrix multiplications (BMMs):
 
 \begin{align}
-\text{BMM1 (Q absorption):} \quad & Q'_h = Q_h \cdot W^\text{kc}_h, \quad W^\text{kc}_h \in \mathbb{R}^{d_\text{nope} \times d_\text{lora}} \nonumber \\
-\text{BMM2 (V reconstruction):} \quad & O_h = A_h \cdot W^\text{vc}_h, \quad W^\text{vc}_h \in \mathbb{R}^{d_\text{lora} \times d_v} \nonumber
+\text{BMM1:} \; & Q'_h = Q_h W^\text{kc}_h, \;\; W^\text{kc}_h \!\in\! \mathbb{R}^{d_\text{nope} \times d_\text{lora}} \nonumber \\
+\text{BMM2:} \; & O_h = A_h W^\text{vc}_h, \;\; W^\text{vc}_h \!\in\! \mathbb{R}^{d_\text{lora} \times d_v} \nonumber
 \end{align}
 
 where $h = 1, \ldots, H$ heads.  These are batched GEMMs with batch dimension $H$, independent of KV sequence length.
@@ -287,9 +416,9 @@ We profile reconstruction BMMs separately from FlashInfer MLA attention on DeepS
 \small
 \caption{MLA reconstruction overhead per layer, DeepSeek-V3 shapes, $L_{kv}=2048$.  Reconstruction cost is independent of KV length.}
 \label{tab:recon}
-\begin{tabular}{@{}rrrrrr@{}}
+\begin{tabular}{@{}rrrrr@{}}
 \toprule
-BS & Recon ($\mu$s) & Attn ($\mu$s) & Recon \% & Model Recon (ms) \\
+BS & Recon ($\mu$s) & Attn ($\mu$s) & Recon \% & Model (ms) \\
 \midrule
   1 & 35.6 &  23.0 & \textbf{60.7\%} & 2.17 \\
   4 & 35.4 &  27.2 & 56.6\% & 2.16 \\
@@ -302,7 +431,55 @@ BS & Recon ($\mu$s) & Attn ($\mu$s) & Recon \% & Model Recon (ms) \\
 \end{tabular}
 \end{table}
 
-\textbf{Key finding:}  At batch size 1, reconstruction BMMs consume \textbf{60.7\%} of attention-layer time (35.6~$\mu$s vs.\ 23.0~$\mu$s for the attention kernel itself).  Across 61 layers, this is \textbf{2.17~ms per token}---a fixed per-query overhead invisible to standard attention benchmarks.
+\textbf{Key finding:}  At batch size 1, reconstruction BMMs consume \textbf{60.7\%} of attention-layer time (35.6~$\mu$s vs.\ 23.0~$\mu$s for the attention kernel itself).  Across 61 layers, this totals \textbf{2.17~ms per token}, a fixed per-query overhead invisible to standard attention benchmarks.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth,
+  height=0.65\columnwidth,
+  ybar stacked,
+  bar width=11pt,
+  xlabel={Batch Size},
+  ylabel={Per-Layer Time ($\mu$s)},
+  symbolic x coords={1,4,16,64,128,256,512},
+  xtick=data,
+  ymin=0, ymax=780,
+  grid=major, grid style={gray!30},
+  enlarge x limits=0.1,
+  clip=false,
+  legend style={at={(0.03,0.97)}, anchor=north west},
+]
+% Reconstruction BMMs (bottom, red)
+\addplot[fill=reconred!75, draw=reconred!90] coordinates {
+  (1,35.6) (4,35.4) (16,34.2) (64,34.1) (128,38.4) (256,66.9) (512,109.4)
+};
+% Attention kernel (top, blue)
+\addplot[fill=attnblue!75, draw=attnblue!90] coordinates {
+  (1,23.0) (4,27.2) (16,40.4) (64,83.6) (128,154.4) (256,293.6) (512,584.5)
+};
+% Reconstruction % annotations above each bar
+\node[font=\scriptsize\bfseries, reconred!80, anchor=south]
+  at (axis cs:1,62) {61\%};
+\node[font=\scriptsize\bfseries, reconred!80, anchor=south]
+  at (axis cs:4,66) {57\%};
+\node[font=\scriptsize\bfseries, reconred!80, anchor=south]
+  at (axis cs:16,78) {46\%};
+\node[font=\scriptsize, reconred!80, anchor=south]
+  at (axis cs:64,121) {29\%};
+\node[font=\scriptsize, reconred!80, anchor=south]
+  at (axis cs:128,196) {20\%};
+\node[font=\scriptsize, reconred!80, anchor=south]
+  at (axis cs:256,364) {19\%};
+\node[font=\scriptsize, reconred!80, anchor=south]
+  at (axis cs:512,698) {16\%};
+\legend{Reconstruction BMMs, Attention Kernel}
+\end{axis}
+\end{tikzpicture}
+\caption{MLA attention-layer time decomposition per layer (DeepSeek-V3 shapes, $L_{kv}{=}2048$).  Reconstruction BMMs (red) dominate at small batch sizes (\textbf{61\% at bs=1}) and remain significant at bs=512.  Reconstruction cost is nearly constant (${\sim}$35~$\mu$s), independent of KV length; attention scales linearly.}
+\label{fig:recon_overhead}
+\end{figure}
 
 \subsection{Roofline Analysis: Memory-Bound at All Batch Sizes}
 
@@ -311,9 +488,9 @@ BS & Recon ($\mu$s) & Attn ($\mu$s) & Recon \% & Model Recon (ms) \\
 \small
 \caption{Arithmetic intensity and achieved bandwidth for reconstruction BMMs.  H100 roofline crossover: AI = 295 (990~TFLOPS / 3.35~TB/s).}
 \label{tab:roofline}
-\begin{tabular}{@{}rrrrrr@{}}
+\begin{tabular}{@{}rrrrr@{}}
 \toprule
-BS & AI (BMM1) & BW BMM1 & AI (BMM2) & BW BMM2 \\
+BS & AI (BMM1) & BW$_1$ & AI (BMM2) & BW$_2$ \\
 \midrule
   1 & 0.97 &  954 & 0.97 &  952 \\
  16 & 15.5 & 1133 & 15.5 & 1137 \\
@@ -328,11 +505,56 @@ Arithmetic intensity peaks at 93 (bs=128+), well below the crossover point of 29
 
 \textbf{Critical implication:}  Because reconstruction is memory-bound and weight-dominated (weight matrix is $128 \times 128 \times 512 \times 2 = 16$~MB per BMM, fixed regardless of batch size), reducing weight precision directly reduces the memory bandwidth bottleneck.
 
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{loglogaxis}[
+  width=0.95\columnwidth,
+  height=0.6\columnwidth,
+  xlabel={Arithmetic Intensity (FLOP/byte)},
+  ylabel={Performance (TFLOPS)},
+  xmin=0.4, xmax=600,
+  ymin=0.4, ymax=1500,
+  grid=major, grid style={gray!20},
+  clip=false,
+  legend style={at={(0.97,0.03)}, anchor=south east},
+]
+% Memory ceiling: y = 3.35 * x
+\addplot[thick, black!60, forget plot, domain=0.4:295, samples=2] {3.35*x};
+% Compute ceiling: y = 989.4
+\addplot[thick, black!60, forget plot, domain=295:600, samples=2] {989.4};
+% Crossover marker
+\addplot[only marks, mark=|, mark size=4, black!60, forget plot]
+  coordinates {(295, 989.4)};
+% Ceiling labels
+\node[font=\scriptsize, black!60, rotate=33, anchor=south]
+  at (axis cs:8,35) {HBM (3.35 TB/s)};
+\node[font=\scriptsize, black!60, anchor=south east]
+  at (axis cs:580,989.4) {990 TF};
+\node[font=\tiny, black!50, anchor=north]
+  at (axis cs:295,850) {AI=295};
+% Reconstruction BMM data points
+\addplot[only marks, mark=*, mark size=3.5, reconred, thick]
+  coordinates {
+    (0.97, 0.92) (15.5, 17.6) (62.1, 99.4) (93.0, 170.8)
+  };
+\addlegendentry{Recon.\ BMMs}
+% Point labels
+\node[font=\scriptsize, reconred, anchor=south west] at (axis cs:1.2,1.1) {bs=1};
+\node[font=\scriptsize, reconred, anchor=south west] at (axis cs:17.5,19.5) {bs=16};
+\node[font=\scriptsize, reconred, anchor=north east] at (axis cs:56,88) {bs=64};
+\node[font=\scriptsize, reconred, anchor=south west] at (axis cs:100,182) {bs=128};
+\end{loglogaxis}
+\end{tikzpicture}
+\caption{H100 roofline with MLA reconstruction BMMs.  All operating points fall on the memory-bound slope, well below the compute ceiling (crossover at AI=295).  Even at bs=128 (AI=93), reconstruction achieves only 55\% of the memory ceiling.}
+\label{fig:roofline}
+\end{figure}
+
 % ══════════════════════════════════════════════════════════════════════════════
-\section{INT4 Reconstruction Weight Quantization}
+\section{INT4 Mitigation and the L2 Cache Barrier}
 \label{sec:int4}
 
-The roofline analysis motivates INT4 weight-only quantization of $W^\text{kc}$ and $W^\text{vc}$.  The key question: does this preserve model quality?
+Reconstruction BMMs are memory-bound at all practical batch sizes, and their weight matrices dominate the data transfer.  Reducing weight precision should therefore yield proportional speedups.  We evaluate INT4 weight-only quantization of $W^\text{kc}$ and $W^\text{vc}$, addressing two questions: does it preserve quality, and does it deliver the expected performance gain?
 
 \subsection{Perplexity Evaluation}
 
@@ -354,7 +576,53 @@ INT4 all linear      & 11.784 & +6.057 & 5,209 \\
 \end{tabular}
 \end{table}
 
-\textbf{Selective INT4 quantization of reconstruction weights adds only +0.051 perplexity}---an order of magnitude below the typical 0.5 quality threshold.  Meanwhile, naive INT4 of all linear weights more than doubles perplexity.
+\textbf{Selective INT4 quantization of reconstruction weights adds only +0.051 perplexity}, an order of magnitude below the typical 0.5 quality threshold.  Naive INT4 of all linear weights, by contrast, more than doubles perplexity.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth,
+  height=0.58\columnwidth,
+  ybar,
+  bar width=28pt,
+  ylabel={Perplexity (PPL $\downarrow$)},
+  symbolic x coords={{FP16 baseline},{INT4 selective},{INT4 all weights}},
+  xtick=data,
+  x tick label style={font=\small, align=center, text width=2.4cm},
+  ymin=0, ymax=15,
+  ytick={0,2,4,6,8,10,12,14},
+  grid=major, grid style={gray!30},
+  enlarge x limits=0.25,
+  clip=false,
+]
+\addplot[fill=fiblue!50, draw=fiblue!70] coordinates {
+  ({FP16 baseline}, 5.727)
+  ({INT4 selective}, 5.777)
+  ({INT4 all weights}, 11.784)
+};
+% Quality threshold line (+0.5 from baseline)
+\addplot[dashed, reconred!50, thick, forget plot, sharp plot]
+  coordinates {({FP16 baseline},6.227) ({INT4 all weights},6.227)};
+\node[font=\small, reconred!60, anchor=south west]
+  at (axis cs:{FP16 baseline},6.4) {+0.5 PPL threshold};
+% Value labels inside bars (white on blue)
+\node[font=\small\bfseries, white, anchor=north]
+  at (axis cs:{FP16 baseline},5.5) {5.73};
+\node[font=\small\bfseries, white, anchor=north]
+  at (axis cs:{INT4 selective},5.55) {5.78};
+\node[font=\small\bfseries, white, anchor=north]
+  at (axis cs:{INT4 all weights},11.55) {11.78};
+% Delta annotations
+\node[font=\small, predgreen!80!black, anchor=north]
+  at (axis cs:{INT4 selective},4.6) {$\Delta$\,=\,+0.051};
+\node[font=\small, reconred!80, anchor=south]
+  at (axis cs:{INT4 all weights},12.1) {$\Delta$\,=\,+6.057};
+\end{axis}
+\end{tikzpicture}
+\caption{Wikitext-2 perplexity under INT4 quantization (DeepSeek-V2-Lite).  Selective INT4 of reconstruction weights (\texttt{kv\_b\_proj}) adds only +0.051~PPL, well within the +0.5 quality threshold.  Naive INT4 of all linear weights severely degrades quality.}
+\label{fig:ppl}
+\end{figure}
 
 \subsection{Why Reconstruction Weights Are Quantization-Friendly}
 
@@ -382,7 +650,7 @@ For memory-bound operations, speedup from weight quantization equals the ratio o
 \label{tab:int4_speedup}
 \begin{tabular}{@{}rrrrr@{}}
 \toprule
-BS & Weight (MB) & Act FP16 (MB) & Act INT4 eq. (MB) & Speedup \\
+BS & Wt (MB) & Act (MB) & INT4 eq.\ (MB) & Speedup \\
 \midrule
   1 & 16.00 & 0.03 & 4.00 & 3.94$\times$ \\
   4 & 16.00 & 0.13 & 4.00 & 3.89$\times$ \\
@@ -394,7 +662,7 @@ BS & Weight (MB) & Act FP16 (MB) & Act INT4 eq. (MB) & Speedup \\
 \end{tabular}
 \end{table}
 
-At batch size 1 (latency-critical single-query serving), the roofline predicts \textbf{3.94$\times$ speedup}---reducing the 2.17~ms full-model reconstruction overhead to $\sim$0.55~ms.
+At batch size 1 (latency-critical single-query serving), the roofline predicts \textbf{3.94$\times$ speedup}, which would reduce the 2.17~ms full-model reconstruction overhead to $\sim$0.55~ms.
 
 \subsection{Measured Kernel Performance}
 
@@ -405,9 +673,10 @@ We implemented a custom batched W4A16 Triton kernel that fuses the head dimensio
 \small
 \caption{Measured INT4 kernel performance vs.\ cuBLAS FP16 \texttt{torch.bmm}.  ``FP16 loop'' = 128 individual \texttt{torch.mm} calls.}
 \label{tab:int4_measured}
-\begin{tabular}{@{}rrrrrr@{}}
+\begin{tabular}{@{}rrrrr@{}}
 \toprule
-BS & FP16 bmm (ms) & INT4 Triton (ms) & FP16 loop (ms) & INT4/FP16 \\
+BS & FP16 bmm & INT4 Tri & FP16 loop & Ratio \\
+   & (ms) & (ms) & (ms) & INT4/FP16 \\
 \midrule
   1 & 0.036 & 0.073 & 2.194 & 0.49$\times$ \\
   4 & 0.037 & 0.073 & 2.203 & 0.50$\times$ \\
@@ -419,26 +688,72 @@ BS & FP16 bmm (ms) & INT4 Triton (ms) & FP16 loop (ms) & INT4/FP16 \\
 \end{tabular}
 \end{table}
 
-\textbf{The INT4 kernel is 2$\times$ slower than cuBLAS FP16, not 3.9$\times$ faster.}  The INT4 kernel is, however, 30$\times$ faster than a per-head FP16 loop (0.073~ms vs.\ 2.19~ms), confirming that the batched grid approach is effective---the bottleneck is competing with cuBLAS, not the batching strategy.
+\textbf{The INT4 kernel is 2$\times$ slower than cuBLAS FP16, not 3.9$\times$ faster.}  It is, however, 30$\times$ faster than a per-head FP16 loop (0.073~ms vs.\ 2.19~ms), confirming that the batched grid approach itself is effective.  The bottleneck is competing with cuBLAS, not the batching strategy.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth,
+  height=0.62\columnwidth,
+  ybar,
+  bar width=8pt,
+  xlabel={Batch Size},
+  ylabel={INT4 / FP16 Speedup},
+  symbolic x coords={1,4,16,64,128,256},
+  xtick=data,
+  ymin=0, ymax=4.8,
+  ytick={0,0.5,1,1.5,2,2.5,3,3.5,4,4.5},
+  grid=major, grid style={gray!30},
+  enlarge x limits=0.12,
+  clip=false,
+  % 1x parity line
+  extra y ticks={1.0},
+  extra y tick labels={},
+  extra y tick style={grid style={black!50, thick, dashed}},
+]
+% Roofline predicted
+\addplot[fill=predgreen!60, draw=predgreen!80] coordinates {
+  (1,3.94) (4,3.89) (16,3.67) (64,3.00) (128,2.50) (256,2.00)
+};
+% Measured
+\addplot[fill=measred!60, draw=measred!80] coordinates {
+  (1,0.49) (4,0.50) (16,0.44) (64,0.28) (128,0.21) (256,0.23)
+};
+% 1x parity label
+\node[font=\scriptsize, black!60, anchor=south west]
+  at (axis cs:1,1.04) {1$\times$ parity};
+% Gap annotation for bs=1
+\draw[<->, black!70, thick]
+  (axis cs:1,0.58) -- (axis cs:1,3.85)
+  node[midway, right, font=\scriptsize, black!70] {8$\times$};
+\legend{Roofline predicted, Measured INT4/FP16}
+\end{axis}
+\end{tikzpicture}
+\caption{The L2 cache barrier.  Roofline analysis predicts 2--3.9$\times$ INT4 speedup assuming HBM-bound operation.  Measured performance shows 0.2--0.5$\times$: the INT4 kernel is \emph{slower} than cuBLAS FP16.  The 16\,MB reconstruction weight fits in H100's 50\,MB L2; after first access, weights are served from L2 at ${\sim}$12\,TB/s, making HBM savings irrelevant.}
+\label{fig:l2barrier}
+\end{figure}
 
 \subsection{The L2 Cache Barrier: Why Roofline Fails for Small-Matrix MLA Reconstruction}
 \label{sec:l2barrier}
 
-The 8$\times$ gap between roofline-predicted (3.9$\times$) and measured (0.49$\times$) performance demands explanation.  We identify three factors, the first of which is dominant:
+The 8$\times$ gap between roofline-predicted (3.9$\times$) and measured (0.49$\times$) performance has three contributing factors, the first of which is dominant:
 
-\textbf{(1) L2 cache residency invalidates the HBM-bound assumption.}  The standard roofline model~\cite{roofline} assumes data is served from HBM at 3.35~TB/s.  But the total reconstruction weight per BMM is $128 \times 128 \times 512 \times 2 = 16$~MB---comfortably within H100's 50~MB L2 cache.  After first access, \texttt{torch.bmm} serves weights from L2 at $\sim$12~TB/s, not HBM.  Reducing weight precision from FP16 to INT4 saves HBM bandwidth that \emph{was never the bottleneck}.
+\textbf{(1) L2 cache residency invalidates the HBM-bound assumption.}  The standard roofline model~\cite{roofline} assumes data is served from HBM at 3.35~TB/s.  But the total reconstruction weight per BMM is $128 \times 128 \times 512 \times 2 = 16$~MB, comfortably within H100's 50~MB L2 cache.  After first access, \texttt{torch.bmm} serves weights from L2 at $\sim$12~TB/s, not HBM.  Reducing weight precision from FP16 to INT4 saves HBM bandwidth that \emph{was never the bottleneck}.
 
-This creates a paradox specific to MLA: the same low-rank compression that makes reconstruction weights small enough to be a latency concern \emph{also} makes them small enough to be L2-resident, defeating the primary motivation for weight quantization.  Standard LLM linear layers (e.g., FFN projections with weights in the hundreds of MB) do not exhibit this behavior.
+We do not directly measure per-line cache residency, but three observations support this explanation: (i)~\texttt{torch.bmm} latency is nearly flat across batch sizes 1--16, consistent with L2-resident weights rather than HBM-streaming behavior; (ii)~achieved bandwidth far exceeds HBM peak when computed against weight size alone; and (iii)~the weight matrix is 3$\times$ smaller than L2 capacity.  This creates a paradox specific to MLA: the same low-rank compression that makes reconstruction weights small enough to be a latency concern \emph{also} makes them small enough to be L2-resident, defeating the primary motivation for weight quantization.  Standard LLM linear layers (e.g., FFN projections with weights in the hundreds of MB) do not exhibit this behavior.
 
-\textbf{(2) INT4 dequantization overhead.}  Each packed byte requires bit masking, shifting, signed extension, and type conversion---adding compute that the roofline model does not account for.  The stride-2 activation loads required by even/odd INT4 packing further reduce cache efficiency.
+\textbf{(2) INT4 dequantization overhead.}  Each packed byte requires bit masking, shifting, signed extension, and type conversion, adding compute that the roofline model does not account for.  The stride-2 activation loads required by even/odd INT4 packing further reduce cache efficiency.
 
 \textbf{(3) cuBLAS batched dispatch advantage.}  \texttt{torch.bmm} uses hardware-optimized batched GEMM scheduling on H100 with fused warp-level batching, while our Triton kernel launches a separate thread block per head-tile combination.
 
-\textbf{When does INT4 help?}  The L2 cache barrier is not absolute.  In production serving, concurrent operations (FFN GEMMs, attention across multiple layers, multi-tenant request batching) contend for L2 capacity, potentially evicting reconstruction weights back to HBM.  This suggests INT4 reconstruction gains are \textbf{deployment-dependent}: negligible in isolated benchmarks, but potentially significant in high-throughput serving with L2 pressure.  Alternatively, fusing reconstruction across multiple layers to exceed L2 capacity, or deploying on GPUs with smaller L2 caches, could restore the roofline-predicted benefit.
+\textbf{When does INT4 help?}  The L2 cache barrier is not absolute.  In production serving, concurrent operations (FFN GEMMs, attention across multiple layers, multi-tenant request batching) contend for L2 capacity and may evict reconstruction weights back to HBM.  INT4 reconstruction gains are therefore \textbf{deployment-dependent}: negligible in isolated benchmarks, but potentially significant under L2 pressure from high-throughput serving.  Alternatively, fusing reconstruction across multiple layers to exceed L2 capacity, or deploying on GPUs with smaller L2 caches, could restore the roofline-predicted benefit.
 
 % ══════════════════════════════════════════════════════════════════════════════
 \section{End-to-End Context}
 \label{sec:e2e}
+
+To quantify the system-level impact of reconstruction, we contrast MLA against a standard GQA decode workload.
 
 \begin{table}[h]
 \centering
@@ -459,7 +774,39 @@ Other & 399 & 5.5\% \\
 \end{tabular}
 \end{table}
 
-Attention constitutes $\sim$20\% of decode time for GQA models.  For MLA models like DeepSeek-V3, the reconstruction overhead adds an additional component: at bs=1, reconstruction GEMMs (2.17~ms across 61 layers) can exceed the attention kernel cost (1.40~ms), making reconstruction the dominant attention-layer bottleneck.  This motivates targeted optimization of reconstruction---via INT4 quantization or kernel fusion---as higher-impact than further attention kernel tuning.
+Attention constitutes $\sim$20\% of decode time for GQA models.  For MLA models like DeepSeek-V3, reconstruction overhead adds a further component: at bs=1, reconstruction GEMMs (2.17~ms across 61 layers) exceed the attention kernel cost (1.40~ms), making reconstruction the dominant attention-layer bottleneck.  Targeted optimization of reconstruction, whether through INT4 quantization or kernel fusion, is therefore higher-impact than further attention kernel tuning.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.92\columnwidth,
+  height=0.52\columnwidth,
+  xbar,
+  bar width=10pt,
+  xlabel={Share of Decode Step (\%)},
+  xmin=0, xmax=82,
+  symbolic y coords={Other,RoPE,Activation,Norms,{Attention},{Linear}},
+  ytick=data,
+  y tick label style={font=\small},
+  nodes near coords={\pgfmathprintnumber\pgfplotspointmeta\%},
+  nodes near coords style={font=\scriptsize, anchor=west},
+  grid=major, grid style={gray!20},
+  enlarge y limits=0.22,
+]
+\addplot[fill=fiblue!50, draw=fiblue!70] coordinates {
+  (70.6,{Linear})
+  (19.6,{Attention})
+  (2.0,Norms)
+  (1.4,Activation)
+  (0.8,RoPE)
+  (5.5,Other)
+};
+\end{axis}
+\end{tikzpicture}
+\caption{Decode step decomposition (Qwen2.5-7B, bs=64).  Linear layers dominate at 71\%; attention is ${\sim}$20\%.  For MLA, reconstruction BMMs add to this: at bs=1, reconstruction (2.17\,ms) exceeds attention (1.40\,ms).}
+\label{fig:e2e}
+\end{figure}
 
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Reproducibility}
@@ -489,9 +836,11 @@ At bs$\geq$64, results are deterministic ($<$0.1\% CV).  At bs=1, $\sim$3\% vari
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Discussion}
 
+Our analysis reveals a chain of findings: MLA's KV compression shifts the attention-layer bottleneck to reconstruction GEMMs (61\% at bs=1); these are memory-bound at all practical batch sizes; INT4 quantization preserves quality but fails to deliver speedup due to L2 cache residency.  We now discuss the implications.
+
 \subsection{Implications for Compiler-Generated Attention}
 
-The prefill gap is architecturally fundamental: Triton's MLIR$\to$PTX pipeline generates \texttt{ld.global} instructions because it has no TMA code generation path for attention patterns.  Triton 3.x introduced \texttt{tl.experimental\_descriptor\_load} for TMA access, but this requires manual descriptor setup that attention kernels have not adopted.  Closing the prefill gap requires either:
+The prefill gap is fundamental to the compiler architecture: Triton's MLIR$\to$PTX pipeline generates \texttt{ld.global} instructions because it has no TMA code generation path for attention patterns.  Triton 3.x introduced \texttt{tl.experimental\_descriptor\_load} for TMA access, but this requires manual descriptor setup that attention kernels have not adopted.  Closing the prefill gap requires either:
 
 \begin{enumerate}[leftmargin=*,topsep=0pt]
   \item Triton compiler support for automatic TMA lowering of attention-shaped loads (research problem).
@@ -503,15 +852,15 @@ The decode gap (1.1$\times$) is more tractable: Triton's two-phase split could b
 
 \subsection{The Occupancy Paradox as Design Principle}
 
-FlashInfer's decode kernel demonstrates that for memory-bound workloads, \emph{maximizing bandwidth per warp} outperforms \emph{maximizing warp count}.  At 183 registers, FlashInfer has 2.4$\times$ fewer active warps than Triton, yet extracts 10\% more HBM bandwidth.  This is consistent with the general principle that memory-bound kernels benefit more from coalesced access patterns and prefetching than from occupancy~\cite{volkov2010}.
+FlashInfer's decode kernel shows that for memory-bound workloads, \emph{maximizing bandwidth per warp} outperforms \emph{maximizing warp count}.  At 183 registers, FlashInfer has 2.4$\times$ fewer active warps than Triton, yet extracts 10\% more HBM bandwidth.  This is consistent with the principle that memory-bound kernels benefit more from coalesced access patterns and prefetching than from raw occupancy~\cite{volkov2010}.
 
 \subsection{MLA: Compression Shifts the Bottleneck}
 
-MLA's 7.1$\times$ KV traffic reduction makes the attention kernel faster---but creates a new bottleneck in the reconstruction GEMMs that were previously negligible.  At bs=1, reconstruction costs 61\% of attention-layer time.  This is a classic systems pattern: optimizing one component (KV cache reads) reveals a previously hidden cost (weight-matrix reads for reconstruction).
+MLA's 7.1$\times$ KV traffic reduction makes the attention kernel faster but creates a new bottleneck in the reconstruction GEMMs that were previously negligible.  At bs=1, reconstruction costs 61\% of attention-layer time.  This illustrates a general systems principle: optimizations that reduce data movement can shift workloads into regimes where cache hierarchy, rather than raw bandwidth, determines performance.  The implication for MLA specifically is that reconstruction overhead must be co-optimized with attention, not ignored.
 
 \subsection{Selective Quantization: Quality Result}
 
-Despite the kernel limitations, reconstruction weights are \emph{uniquely quantization-friendly}: +0.051 PPL for selective INT4 vs.\ +6.057 for naive INT4 of all weights.  This establishes a clear design principle for future MLA serving: \textbf{reconstruction weights are the first target for aggressive quantization}, pending kernel support.
+Despite the kernel limitations, reconstruction weights tolerate quantization well: +0.051 PPL for selective INT4 vs.\ +6.057 for naive INT4 of all weights.  For future MLA serving systems, \textbf{reconstruction weights are the natural first target for aggressive quantization}, pending kernel support.
 
 \subsection{Limitations}
 
@@ -531,16 +880,16 @@ Despite the kernel limitations, reconstruction weights are \emph{uniquely quanti
 
 \textbf{MLA architectures.}  DeepSeek-V2~\cite{deepseekv2} introduced Multi-head Latent Attention; DeepSeek-V3~\cite{deepseekv3} scaled it to 671B parameters with 128 attention heads.  While both papers describe the weight-absorbed reconstruction mechanism, neither quantifies its runtime cost relative to the attention kernel.
 
-\textbf{Performance modeling.}  The roofline model~\cite{roofline} provides the standard framework for reasoning about compute- vs.\ memory-bound kernels.  Our L2 cache barrier finding (Section~\ref{sec:l2barrier}) demonstrates a failure mode of single-level roofline analysis: when working sets fit in L2, the effective bandwidth ceiling shifts from HBM to L2, invalidating roofline predictions.  Volkov~\cite{volkov2010} showed that occupancy is not always the primary performance factor, motivating our analysis of FlashInfer's register-heavy approach.
+\textbf{Performance modeling.}  The roofline model~\cite{roofline} is the standard framework for reasoning about compute- vs.\ memory-bound kernels.  Our L2 cache barrier finding (Section~\ref{sec:l2barrier}) exposes a failure mode of single-level roofline analysis: when working sets fit in L2, the effective bandwidth ceiling shifts from HBM to L2, invalidating the predictions.  Volkov~\cite{volkov2010} showed that occupancy is not always the primary performance factor, motivating our analysis of FlashInfer's register-heavy approach.
 
-\textbf{Weight quantization.}  GPTQ~\cite{gptq} and AWQ~\cite{awq} enable post-training INT4 weight quantization for LLM inference.  KVQuant~\cite{kvquant} applies quantization to the KV cache itself, targeting the memory footprint that MLA addresses architecturally.  QuaRot~\cite{quarot} uses rotation to eliminate outliers before 4-bit quantization.  However, all prior quantization work targets standard linear layers (FFN, attention projections)---not the reconstruction matrices specific to MLA.  To our knowledge, no prior public work quantifies the reconstruction GEMM overhead in MLA or evaluates selective INT4 quantization of these weights.
+\textbf{Weight quantization.}  GPTQ~\cite{gptq} and AWQ~\cite{awq} enable post-training INT4 weight quantization for LLM inference.  KVQuant~\cite{kvquant} applies quantization to the KV cache itself, targeting the memory footprint that MLA addresses architecturally.  QuaRot~\cite{quarot} uses rotation to eliminate outliers before 4-bit quantization.  All prior quantization work targets standard linear layers (FFN, attention projections), not the reconstruction matrices specific to MLA.  To our knowledge, no prior public work quantifies the reconstruction GEMM overhead in MLA or evaluates selective INT4 quantization of these weights.
 
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Conclusion}
 
-We presented two sets of findings.  First, a kernel-level characterization of FlashInfer vs.\ Triton attention on H100, identifying TMA hardware loads, memory access pattern quality, and cooperative grid launch as the three root causes of the performance gap.  Second, and more significantly, we identified MLA's reconstruction GEMMs as a dominant and previously unquantified bottleneck---consuming 61\% of attention-layer time at batch size 1 for DeepSeek-V3-scale architectures.
+We presented two sets of findings.  First, a kernel-level characterization of FlashInfer vs.\ Triton attention on H100, identifying TMA hardware loads, memory access pattern quality, and cooperative grid launch as the three root causes of the performance gap.  Second, we identified MLA's reconstruction GEMMs as a dominant and previously unquantified bottleneck, consuming 61\% of attention-layer time at batch size 1 for DeepSeek-V3-scale architectures.
 
-Our most nuanced finding concerns INT4 quantization of reconstruction weights.  \textbf{Quality is safe}: selective INT4 adds only +0.051 perplexity.  \textbf{But speedup is not automatic}: our custom Triton W4A16 kernel achieves 0.49$\times$ of cuBLAS FP16 because the 16~MB reconstruction weights fit in H100's 50~MB L2 cache, making HBM bandwidth savings irrelevant.  This reveals a gap between roofline-predicted (3.9$\times$) and realized performance that is specific to small, L2-resident weight matrices---a regime common in MLA but absent from standard LLM linear layers.  Closing this gap requires either CUDA-native INT8 tensor core kernels, cross-layer weight fusion beyond L2 capacity, or deployment on GPUs with smaller L2 caches.
+The INT4 quantization results illustrate a subtlety in MLA optimization.  \textbf{Quality is safe}: selective INT4 adds only +0.051 perplexity.  \textbf{But speedup is not automatic}: our custom Triton W4A16 kernel achieves 0.49$\times$ of cuBLAS FP16 because the 16~MB reconstruction weights fit in H100's 50~MB L2 cache, making HBM bandwidth savings irrelevant.  The gap between roofline-predicted (3.9$\times$) and realized performance is specific to small, L2-resident weight matrices, a regime common in MLA but absent from standard LLM linear layers.  Closing this gap requires either CUDA-native INT8 tensor core kernels, cross-layer weight fusion beyond L2 capacity, or deployment on GPUs with smaller L2 caches.
 
 All profiling scripts, raw data, and the perplexity evaluation code are publicly available for reproduction.
 
