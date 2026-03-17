@@ -1,0 +1,61 @@
+{
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "results": [
+    {
+      "experiment": "A_interference",
+      "batch_size": 1,
+      "d_lora": 512,
+      "fp16_isolated_ms": 0.0173,
+      "int4_isolated_ms": 0.0336,
+      "ratio_isolated": 1.941,
+      "fp16_pressure_ms": 0.0292,
+      "int4_pressure_ms": 0.1247,
+      "ratio_pressure": 4.269,
+      "fp16_degradation": 1.688,
+      "int4_degradation": 3.712
+    },
+    {
+      "experiment": "A_interference",
+      "batch_size": 4,
+      "d_lora": 512,
+      "fp16_isolated_ms": 0.0176,
+      "int4_isolated_ms": 0.0327,
+      "ratio_isolated": 1.858,
+      "fp16_pressure_ms": 0.0306,
+      "int4_pressure_ms": 0.1259,
+      "ratio_pressure": 4.11,
+      "fp16_degradation": 1.74,
+      "int4_degradation": 3.848
+    },
+    {
+      "experiment": "B_residency",
+      "batch_size": 1,
+      "d_lora": 512,
+      "n_matrices": 4,
+      "total_weight_mb": 64,
+      "fp16_single_ms": 0.0177,
+      "int4_single_ms": 0.0321,
+      "ratio_single": 1.812,
+      "fp16_cycle_ms": 0.0181,
+      "int4_cycle_ms": 0.0317,
+      "ratio_cycle": 1.751,
+      "fp16_degradation": 1.022,
+      "int4_degradation": 0.987
+    },
+    {
+      "experiment": "B_residency",
+      "batch_size": 4,
+      "d_lora": 512,
+      "n_matrices": 4,
+      "total_weight_mb": 64,
+      "fp16_single_ms": 0.0177,
+      "int4_single_ms": 0.032,
+      "ratio_single": 1.808,
+      "fp16_cycle_ms": 0.0183,
+      "int4_cycle_ms": 0.0322,
+      "ratio_cycle": 1.762,
+      "fp16_degradation": 1.033,
+      "int4_degradation": 1.006
+    }
+  ]
+}

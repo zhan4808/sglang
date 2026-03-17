@@ -266,9 +266,9 @@ def main():
             print(f"Avg INT4/FP16 ratio (weight > 50 MB, HBM-bound):    {avg_above:.2f}x")
         if below and above:
             print(f"Ratio improvement when crossing L2 boundary:         {avg_above/avg_below:.2f}x")
-            crosses = any(r["int4_fp16_ratio"] >= 1.0 for r in above)
+            crosses = any(r["int4_fp16_ratio"] <= 1.0 for r in above)
             if crosses:
-                first = next(r for r in above if r["int4_fp16_ratio"] >= 1.0)
+                first = next(r for r in above if r["int4_fp16_ratio"] <= 1.0)
                 print(f"\n*** INT4 first beats FP16 at d_lora={first['d_lora']} "
                       f"({first['weight_mb']} MB) ***")
             else:

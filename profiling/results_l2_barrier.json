@@ -1,0 +1,223 @@
+{
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "H": 128,
+  "D_NOPE": 128,
+  "results": [
+    {
+      "batch_size": 1,
+      "d_lora": 256,
+      "weight_mb": 8.0,
+      "fits_l2": true,
+      "fp16_ms": 0.017,
+      "int4_ms": 0.0325,
+      "int4_fp16_ratio": 1.912
+    },
+    {
+      "batch_size": 1,
+      "d_lora": 384,
+      "weight_mb": 12.0,
+      "fits_l2": true,
+      "fp16_ms": 0.017,
+      "int4_ms": 0.0321,
+      "int4_fp16_ratio": 1.887
+    },
+    {
+      "batch_size": 1,
+      "d_lora": 512,
+      "weight_mb": 16.0,
+      "fits_l2": true,
+      "fp16_ms": 0.0175,
+      "int4_ms": 0.0326,
+      "int4_fp16_ratio": 1.864
+    },
+    {
+      "batch_size": 1,
+      "d_lora": 768,
+      "weight_mb": 24.0,
+      "fits_l2": true,
+      "fp16_ms": 0.0171,
+      "int4_ms": 0.0326,
+      "int4_fp16_ratio": 1.908
+    },
+    {
+      "batch_size": 1,
+      "d_lora": 1024,
+      "weight_mb": 32.0,
+      "fits_l2": true,
+      "fp16_ms": 0.0175,
+      "int4_ms": 0.0342,
+      "int4_fp16_ratio": 1.956
+    },
+    {
+      "batch_size": 1,
+      "d_lora": 1280,
+      "weight_mb": 40.0,
+      "fits_l2": true,
+      "fp16_ms": 0.0251,
+      "int4_ms": 0.0367,
+      "int4_fp16_ratio": 1.46
+    },
+    {
+      "batch_size": 1,
+      "d_lora": 1536,
+      "weight_mb": 48.0,
+      "fits_l2": true,
+      "fp16_ms": 0.0298,
+      "int4_ms": 0.0393,
+      "int4_fp16_ratio": 1.322
+    },
+    {
+      "batch_size": 1,
+      "d_lora": 1792,
+      "weight_mb": 56.0,
+      "fits_l2": false,
+      "fp16_ms": 0.0324,
+      "int4_ms": 0.0416,
+      "int4_fp16_ratio": 1.282
+    },
+    {
+      "batch_size": 1,
+      "d_lora": 2048,
+      "weight_mb": 64.0,
+      "fits_l2": false,
+      "fp16_ms": 0.0355,
+      "int4_ms": 0.0429,
+      "int4_fp16_ratio": 1.21
+    },
+    {
+      "batch_size": 1,
+      "d_lora": 2560,
+      "weight_mb": 80.0,
+      "fits_l2": false,
+      "fp16_ms": 0.0415,
+      "int4_ms": 0.0478,
+      "int4_fp16_ratio": 1.152
+    },
+    {
+      "batch_size": 1,
+      "d_lora": 3072,
+      "weight_mb": 96.0,
+      "fits_l2": false,
+      "fp16_ms": 0.0468,
+      "int4_ms": 0.0526,
+      "int4_fp16_ratio": 1.124
+    },
+    {
+      "batch_size": 1,
+      "d_lora": 4096,
+      "weight_mb": 128.0,
+      "fits_l2": false,
+      "fp16_ms": 0.0574,
+      "int4_ms": 0.0618,
+      "int4_fp16_ratio": 1.078
+    },
+    {
+      "batch_size": 4,
+      "d_lora": 256,
+      "weight_mb": 8.0,
+      "fits_l2": true,
+      "fp16_ms": 0.0166,
+      "int4_ms": 0.0317,
+      "int4_fp16_ratio": 1.915
+    },
+    {
+      "batch_size": 4,
+      "d_lora": 384,
+      "weight_mb": 12.0,
+      "fits_l2": true,
+      "fp16_ms": 0.0174,
+      "int4_ms": 0.0321,
+      "int4_fp16_ratio": 1.847
+    },
+    {
+      "batch_size": 4,
+      "d_lora": 512,
+      "weight_mb": 16.0,
+      "fits_l2": true,
+      "fp16_ms": 0.0173,
+      "int4_ms": 0.0322,
+      "int4_fp16_ratio": 1.858
+    },
+    {
+      "batch_size": 4,
+      "d_lora": 768,
+      "weight_mb": 24.0,
+      "fits_l2": true,
+      "fp16_ms": 0.0177,
+      "int4_ms": 0.0327,
+      "int4_fp16_ratio": 1.847
+    },
+    {
+      "batch_size": 4,
+      "d_lora": 1024,
+      "weight_mb": 32.0,
+      "fits_l2": true,
+      "fp16_ms": 0.0181,
+      "int4_ms": 0.0352,
+      "int4_fp16_ratio": 1.943
+    },
+    {
+      "batch_size": 4,
+      "d_lora": 1280,
+      "weight_mb": 40.0,
+      "fits_l2": true,
+      "fp16_ms": 0.0267,
+      "int4_ms": 0.0382,
+      "int4_fp16_ratio": 1.433
+    },
+    {
+      "batch_size": 4,
+      "d_lora": 1536,
+      "weight_mb": 48.0,
+      "fits_l2": true,
+      "fp16_ms": 0.0312,
+      "int4_ms": 0.0401,
+      "int4_fp16_ratio": 1.285
+    },
+    {
+      "batch_size": 4,
+      "d_lora": 1792,
+      "weight_mb": 56.0,
+      "fits_l2": false,
+      "fp16_ms": 0.0341,
+      "int4_ms": 0.0427,
+      "int4_fp16_ratio": 1.251
+    },
+    {
+      "batch_size": 4,
+      "d_lora": 2048,
+      "weight_mb": 64.0,
+      "fits_l2": false,
+      "fp16_ms": 0.0373,
+      "int4_ms": 0.0447,
+      "int4_fp16_ratio": 1.2
+    },
+    {
+      "batch_size": 4,
+      "d_lora": 2560,
+      "weight_mb": 80.0,
+      "fits_l2": false,
+      "fp16_ms": 0.0431,
+      "int4_ms": 0.05,
+      "int4_fp16_ratio": 1.159
+    },
+    {
+      "batch_size": 4,
+      "d_lora": 3072,
+      "weight_mb": 96.0,
+      "fits_l2": false,
+      "fp16_ms": 0.0486,
+      "int4_ms": 0.0553,
+      "int4_fp16_ratio": 1.137
+    },
+    {
+      "batch_size": 4,
+      "d_lora": 4096,
+      "weight_mb": 128.0,
+      "fits_l2": false,
+      "fp16_ms": 0.06,
+      "int4_ms": 0.0649,
+      "int4_fp16_ratio": 1.082
+    }
+  ]
+}
