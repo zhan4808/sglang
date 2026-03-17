@@ -155,25 +155,68 @@
 
 ---
 
-## 3. MLA (Multi-head Latent Attention) — DeepSeek-V2-Lite
+## 3. MLA Reconstruction GEMM Overhead — DeepSeek-V3 Architecture
 
-| Batch Size | FlashInfer (ms) | Script BW (GB/s) | Actual BW (GB/s) |
-|-----------|----------------|-------------------|------------------|
-| 1 | 0.019 | 1,290 | ~183 |
-| 4 | 0.019 | 5,245 | ~745 |
-| 16 | 0.021 | 18,958 | ~2,694 |
-| 64 | 0.065 | 24,755 | ~3,518 |
-| 128 | 0.112 | 28,666 | ~4,074 |
-| 256 | 0.214 | 30,160 | ~2,822 |
+MLA stores compressed KV latents and reconstructs full KV heads via two batched matrix multiplications (BMMs) **outside** the attention kernel, at every decode step, per layer:
 
-**Important caveat on bandwidth numbers**: The "Script BW" column uses the logical (expanded-head) KV size, which inflates bandwidth beyond physical HBM peak. The "Actual BW" column estimates real memory traffic using the compressed KV size: `bs * kv_len * (kv_lora_rank + qk_rope_head_dim) * 2 bytes = bs * kv_len * 576 * 2`.
+| Stage | Operation | Shape (DeepSeek-V3) |
+|-------|-----------|---------------------|
+| **BMM1 (Q absorption)** | Absorbs K reconstruction weights into Q | `(128, bs, 128) × (128, 128, 512)` |
+| **Attention kernel** | Operates on compressed KV latents (dim=576) | FlashInfer `BatchMLAPagedAttentionWrapper` |
+| **BMM2 (V reconstruction)** | Reconstructs full V from attention output | `(128, bs, 512) × (128, 512, 128)` |
 
-For DeepSeek-V2-Lite's MLA config (`kv_lora_rank=512`, `qk_rope_head_dim=64`, `num_kv_heads=16`, `head_dim=128`):
-- **GQA equivalent KV**: `2 * bs * kv_len * 16 * 128 * 2 = 4.295 GB` at bs=256
-- **Actual MLA compressed KV**: `bs * kv_len * (512 + 64) * 2 = 0.604 GB` at bs=256
-- **Compression ratio**: GQA reads **7.1x more data** than MLA for the same logical attention
+Weight sizes: `w_kc` = 16.8 MB, `w_vc` = 16.8 MB per layer (33.6 MB total, 2,047 MB across 61 layers).
 
-This is MLA's core advantage: by projecting K and V into a shared low-rank latent space, it dramatically reduces HBM traffic. The actual achieved bandwidth (~2,822 GB/s at bs=256) is 84% of HBM peak — confirming the kernel is well-optimized and memory-bound at scale.
+### 3.1 Reconstruction as Fraction of Attention-Layer Time
+
+| BS | kv=512 | kv=2048 | kv=4096 | Insight |
+|----|--------|---------|---------|---------|
+| 1 | **62.8%** | **60.7%** | **59.2%** | Recon dominates ~60% regardless of KV length |
+| 16 | **56.0%** | **45.8%** | 39.6% | Crossover: recon > attn at short KV |
+| 64 | **51.6%** | 29.0% | 20.0% | 20-52% — significant at all KV lengths |
+| 256 | 39.9% | 18.6% | 11.4% | Non-trivial even at large batch |
+| 1024 | 30.7% | 15.8% | — | Still measurable |
+
+**Critical insight**: Reconstruction cost is **independent of KV sequence length** — it's a per-query BMM, not per-KV-token. Attention cost scales linearly with KV length. So: `recon_fraction ≈ 1 / (1 + c × kv_len / bs)`. At bs=1, reconstruction is ~60% of layer time **regardless of context length**.
+
+### 3.2 Absolute Timing (kv_len=2048)
+
+| BS | BMM1 (ms) | BMM2 (ms) | Recon Total (ms) | Attention (ms) | Recon % | Full Model Recon | Full Model Attn |
+|----|-----------|-----------|-------------------|----------------|---------|------------------|-----------------|
+| 1 | 0.018 | 0.018 | 0.036 | 0.023 | 60.7% | 2.17 ms | 1.40 ms |
+| 4 | 0.018 | 0.017 | 0.035 | 0.027 | 56.6% | 2.16 ms | 1.66 ms |
+| 16 | 0.017 | 0.017 | 0.034 | 0.040 | 45.8% | 2.08 ms | 2.47 ms |
+| 64 | 0.017 | 0.017 | 0.034 | 0.084 | 29.0% | 2.08 ms | 5.10 ms |
+| 128 | 0.021 | 0.018 | 0.038 | 0.154 | 19.9% | 2.34 ms | 9.42 ms |
+| 256 | 0.034 | 0.033 | 0.067 | 0.294 | 18.6% | 4.08 ms | 17.91 ms |
+| 512 | 0.056 | 0.053 | 0.109 | 0.585 | 15.8% | 6.68 ms | 35.66 ms |
+
+BMM TFLOPS achieved: 63–195 TFLOPS FP16 (6–20% of 990 TFLOPS peak), confirming these are **memory-bound** — weight loading dominates.
+
+### 3.3 INT4 Quantization Feasibility (Roofline)
+
+All reconstruction BMMs are memory-bound at every batch size tested (arithmetic intensity 1–93, well below the 295 crossover for H100):
+
+| BS | Arithmetic Intensity | Regime | Theoretical INT4 Speedup |
+|----|---------------------|--------|--------------------------|
+| 1 | 1.0 | MEMORY-BOUND | **3.89x** |
+| 16 | 13.8 | MEMORY-BOUND | **2.85x** |
+| 64 | 39.4 | MEMORY-BOUND | **1.86x** |
+| 256 | 73.1 | MEMORY-BOUND | **1.27x** |
+| 1024 | 93.1 | MEMORY-BOUND | **1.07x** |
+
+Weight memory savings: 33.6 MB/layer (FP16) → 8.4 MB/layer (INT4) = **4× reduction**. Across 61 layers: 2,047 MB → 512 MB.
+
+**Estimated E2E impact of INT4 reconstruction** (assuming ~3× BMM speedup at small bs):
+- At bs=1, kv=2048: save ~1.5 ms (41% of attention-layer time across 61 layers)
+- At bs=256, kv=2048: save ~2.7 ms (12% of attention-layer time)
+
+### 3.4 MLA KV Compression Ratio
+
+For DeepSeek-V3's MLA config (`kv_lora_rank=512`, `qk_rope_head_dim=64`, `num_heads=128`, `head_dim=128`):
+- **GQA equivalent KV**: `2 × bs × kv_len × 128 × 128 × 2 bytes`
+- **Actual MLA compressed KV**: `bs × kv_len × (512 + 64) × 2 bytes`
+- **Compression ratio**: GQA reads **7.1×** more data than MLA for equivalent logical attention
 
 ---
 
@@ -209,8 +252,11 @@ FlashInfer's 2-2.7x prefill advantage stems from Hopper-specific hardware featur
 ### Finding 4: L2 cache doesn't help GQA decode at typical batch sizes
 Despite Llama-3-8B's 4:1 GQA ratio, L2 hit rates are <1% for both backends during decode at bs=64. The KV cache (`64 * 2048 * 8 * 128 * 2 = 256 MB`) is 5x larger than L2 (50 MB). GQA's head sharing would only help if the KV cache fit in L2 — possible at bs=1 where KV is only 4 MB.
 
-### Finding 5: MLA reduces memory traffic 7x vs GQA
-MLA's compressed KV representation reads **7.1x less data** than GQA for the same logical attention (for DeepSeek-V2-Lite's config). The kernel achieves ~84% of HBM peak bandwidth on the compressed data, confirming efficient implementation.
+### Finding 5: MLA reconstruction BMMs are the hidden bottleneck at small batch sizes
+At bs=1, MLA's reconstruction BMMs (Q absorption + V reconstruction) take **61% of attention-layer time** for DeepSeek-V3. This cost is independent of KV sequence length — it's a fixed per-query overhead. These BMMs are memory-bound (weight-read dominated), making INT4 quantization of `w_kc`/`w_vc` a viable 2-4× speedup path that could save 1.5ms per decode step at bs=1 across 61 layers.
+
+### Finding 6: MLA reduces KV cache memory traffic 7.1x vs GQA
+MLA's compressed KV representation reads **7.1x less data** than GQA for the same logical attention (DeepSeek-V3 config). The reconstruction cost to decompress this is non-trivial (Finding 5) but amortizes at large batch sizes.
 
 ---
 
