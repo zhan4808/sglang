@@ -15,55 +15,55 @@
 \providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
 \newlabel{tab:configs}{{1}{2}{Attention configurations profiled}{table.caption.7}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Methodology}{2}{subsection.8}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Decode bandwidth vs.\ batch size (Llama-3-8B, $L_{kv}{=}2048$). Both backends approach HBM saturation; FlashInfer peaks at 89\% of H100 peak. The gap narrows from 2$\times $ at bs=1 to 1.12$\times $ at bs=256 as launch overhead becomes negligible relative to streaming KV reads.}}{2}{figure.caption.12}\protected@file@percent }
-\newlabel{fig:decode_bw}{{1}{2}{Decode bandwidth vs.\ batch size (Llama-3-8B, $L_{kv}{=}2048$). Both backends approach HBM saturation; FlashInfer peaks at 89\% of H100 peak. The gap narrows from 2$\times $ at bs=1 to 1.12$\times $ at bs=256 as launch overhead becomes negligible relative to streaming KV reads}{figure.caption.12}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {3}Attention Kernel Validation}{2}{section.9}\protected@file@percent }
 \newlabel{sec:validation}{{3}{2}{Attention Kernel Validation}{section.9}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Decode: Bandwidth Scaling}{2}{subsection.10}\protected@file@percent }
 \newlabel{sec:decode}{{3.1}{2}{Decode: Bandwidth Scaling}{subsection.10}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Decode performance, Llama-3-8B GQA, $L_{kv}=2048$.}}{2}{table.caption.11}\protected@file@percent }
 \newlabel{tab:decode_bs}{{2}{2}{Decode performance, Llama-3-8B GQA, $L_{kv}=2048$}{table.caption.11}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Decode: NCU Analysis}{2}{subsection.14}\protected@file@percent }
 \citation{hopper}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Decode bandwidth vs.\ batch size (Llama-3-8B, $L_{kv}{=}2048$). Both backends approach HBM saturation; FlashInfer peaks at 89\% of H100 peak. The gap narrows from 2$\times $ at bs=1 to 1.12$\times $ at bs=256 as launch overhead becomes negligible relative to streaming KV reads.}}{3}{figure.caption.12}\protected@file@percent }
+\newlabel{fig:decode_bw}{{1}{3}{Decode bandwidth vs.\ batch size (Llama-3-8B, $L_{kv}{=}2048$). Both backends approach HBM saturation; FlashInfer peaks at 89\% of H100 peak. The gap narrows from 2$\times $ at bs=1 to 1.12$\times $ at bs=256 as launch overhead becomes negligible relative to streaming KV reads}{figure.caption.12}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Decode performance, Llama-3-8B GQA, bs=64, varying $L_{kv}$.}}{3}{table.caption.13}\protected@file@percent }
 \newlabel{tab:decode_kv}{{3}{3}{Decode performance, Llama-3-8B GQA, bs=64, varying $L_{kv}$}{table.caption.13}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Decode: NCU Analysis}{3}{subsection.14}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces NCU metrics, decode, bs=64, $L_{kv}=2048$.}}{3}{table.caption.15}\protected@file@percent }
-\newlabel{tab:ncu_decode}{{4}{3}{NCU metrics, decode, bs=64, $L_{kv}=2048$}{table.caption.15}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Prefill: TFLOPS Scaling}{3}{subsection.16}\protected@file@percent }
 \newlabel{sec:prefill}{{3.3}{3}{Prefill: TFLOPS Scaling}{subsection.16}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Prefill performance, Llama-3-8B GQA. TFLOPS uses corrected formula ($4 B S^2 H d / 2$).}}{3}{table.caption.17}\protected@file@percent }
-\newlabel{tab:prefill}{{5}{3}{Prefill performance, Llama-3-8B GQA. TFLOPS uses corrected formula ($4 B S^2 H d / 2$)}{table.caption.17}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Prefill compute throughput (Llama-3-8B GQA). FlashInfer achieves 2.1--2.7$\times $ higher TFLOPS across all configurations, peaking at 552~TFLOPS (56\% of peak). The gap widens with sequence length due to FlashInfer's TMA hardware loads and cooperative grid launch (Section~\ref {sec:prefill_ncu}).}}{3}{figure.caption.18}\protected@file@percent }
-\newlabel{fig:prefill_tflops}{{2}{3}{Prefill compute throughput (Llama-3-8B GQA). FlashInfer achieves 2.1--2.7$\times $ higher TFLOPS across all configurations, peaking at 552~TFLOPS (56\% of peak). The gap widens with sequence length due to FlashInfer's TMA hardware loads and cooperative grid launch (Section~\ref {sec:prefill_ncu})}{figure.caption.18}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Prefill: NCU Root Cause Analysis}{3}{subsection.19}\protected@file@percent }
 \newlabel{sec:prefill_ncu}{{3.4}{3}{Prefill: NCU Root Cause Analysis}{subsection.19}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces NCU metrics, prefill, bs=4, $S=2048$.}}{3}{table.caption.20}\protected@file@percent }
-\newlabel{tab:ncu_prefill}{{6}{3}{NCU metrics, prefill, bs=4, $S=2048$}{table.caption.20}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.1}Finding: TMA vs.\ Global Loads (Not ``Cache Hit Rate'')}{3}{subsubsection.21}\protected@file@percent }
 \newlabel{sec:tma}{{3.4.1}{3}{Finding: TMA vs.\ Global Loads (Not ``Cache Hit Rate'')}{subsubsection.21}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces NCU metrics, decode, bs=64, $L_{kv}=2048$.}}{3}{table.caption.15}\protected@file@percent }
+\newlabel{tab:ncu_decode}{{4}{3}{NCU metrics, decode, bs=64, $L_{kv}=2048$}{table.caption.15}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Prefill performance, Llama-3-8B GQA. TFLOPS uses corrected formula ($4 B S^2 H d / 2$).}}{3}{table.caption.17}\protected@file@percent }
+\newlabel{tab:prefill}{{5}{3}{Prefill performance, Llama-3-8B GQA. TFLOPS uses corrected formula ($4 B S^2 H d / 2$)}{table.caption.17}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.2}Finding: No Register Spills (Occupancy-Only Bottleneck)}{3}{subsubsection.22}\protected@file@percent }
+\newlabel{sec:spills}{{3.4.2}{3}{Finding: No Register Spills (Occupancy-Only Bottleneck)}{subsubsection.22}{}}
 \citation{deepseekv2}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.2}Finding: No Register Spills (Occupancy-Only Bottleneck)}{4}{subsubsection.22}\protected@file@percent }
-\newlabel{sec:spills}{{3.4.2}{4}{Finding: No Register Spills (Occupancy-Only Bottleneck)}{subsubsection.22}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Prefill compute throughput (Llama-3-8B GQA). FlashInfer achieves 2.1--2.7$\times $ higher TFLOPS across all configurations, peaking at 552~TFLOPS (56\% of peak). The gap widens with sequence length due to FlashInfer's TMA hardware loads and cooperative grid launch (Section~\ref {sec:prefill_ncu}).}}{4}{figure.caption.18}\protected@file@percent }
+\newlabel{fig:prefill_tflops}{{2}{4}{Prefill compute throughput (Llama-3-8B GQA). FlashInfer achieves 2.1--2.7$\times $ higher TFLOPS across all configurations, peaking at 552~TFLOPS (56\% of peak). The gap widens with sequence length due to FlashInfer's TMA hardware loads and cooperative grid launch (Section~\ref {sec:prefill_ncu})}{figure.caption.18}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces NCU metrics, prefill, bs=4, $S=2048$.}}{4}{table.caption.20}\protected@file@percent }
+\newlabel{tab:ncu_prefill}{{6}{4}{NCU metrics, prefill, bs=4, $S=2048$}{table.caption.20}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.3}Finding: Cooperative Grid vs.\ Wave Quantization}{4}{subsubsection.26}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {4}The MLA Reconstruction Bottleneck}{4}{section.27}\protected@file@percent }
 \newlabel{sec:recon}{{4}{4}{The MLA Reconstruction Bottleneck}{section.27}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces MLA attention-layer time decomposition per layer (DeepSeek-V3 shapes, $L_{kv}{=}2048$). Reconstruction BMMs (red) dominate at small batch sizes (\textbf  {61\% at bs=1}) and remain significant at bs=512. Reconstruction cost is nearly constant (${\sim }$35~$\mu $s), independent of KV length; attention scales linearly.}}{4}{figure.caption.30}\protected@file@percent }
-\newlabel{fig:recon_overhead}{{3}{4}{MLA attention-layer time decomposition per layer (DeepSeek-V3 shapes, $L_{kv}{=}2048$). Reconstruction BMMs (red) dominate at small batch sizes (\textbf {61\% at bs=1}) and remain significant at bs=512. Reconstruction cost is nearly constant (${\sim }$35~$\mu $s), independent of KV length; attention scales linearly}{figure.caption.30}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Cost Breakdown: DeepSeek-V3 Architecture}{4}{subsection.28}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces MLA reconstruction overhead per layer, DeepSeek-V3 shapes, $L_{kv}=2048$. Reconstruction cost is independent of KV length.}}{4}{table.caption.29}\protected@file@percent }
 \newlabel{tab:recon}{{7}{4}{MLA reconstruction overhead per layer, DeepSeek-V3 shapes, $L_{kv}=2048$. Reconstruction cost is independent of KV length}{table.caption.29}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Roofline Analysis: Memory-Bound at All Batch Sizes}{4}{subsection.31}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces MLA attention-layer time decomposition per layer (DeepSeek-V3 shapes, $L_{kv}{=}2048$). Reconstruction BMMs (red) dominate at small batch sizes (\textbf  {61\% at bs=1}) and remain significant at bs=512. Reconstruction cost is nearly constant (${\sim }$35~$\mu $s), independent of KV length; attention scales linearly.}}{5}{figure.caption.30}\protected@file@percent }
+\newlabel{fig:recon_overhead}{{3}{5}{MLA attention-layer time decomposition per layer (DeepSeek-V3 shapes, $L_{kv}{=}2048$). Reconstruction BMMs (red) dominate at small batch sizes (\textbf {61\% at bs=1}) and remain significant at bs=512. Reconstruction cost is nearly constant (${\sim }$35~$\mu $s), independent of KV length; attention scales linearly}{figure.caption.30}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Arithmetic intensity and achieved bandwidth for reconstruction BMMs. H100 roofline crossover: AI = 295 (990~TFLOPS / 3.35~TB/s).}}{5}{table.caption.32}\protected@file@percent }
 \newlabel{tab:roofline}{{8}{5}{Arithmetic intensity and achieved bandwidth for reconstruction BMMs. H100 roofline crossover: AI = 295 (990~TFLOPS / 3.35~TB/s)}{table.caption.32}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces H100 roofline with MLA reconstruction BMMs. All operating points fall on the memory-bound slope, well below the compute ceiling (crossover at AI=295). Even at bs=128 (AI=93), reconstruction achieves only 55\% of the memory ceiling.}}{5}{figure.caption.33}\protected@file@percent }
-\newlabel{fig:roofline}{{4}{5}{H100 roofline with MLA reconstruction BMMs. All operating points fall on the memory-bound slope, well below the compute ceiling (crossover at AI=295). Even at bs=128 (AI=93), reconstruction achieves only 55\% of the memory ceiling}{figure.caption.33}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Roofline Analysis: Memory-Bound at All Batch Sizes}{5}{subsection.31}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {5}INT4 Mitigation and the L2 Cache Barrier}{5}{section.34}\protected@file@percent }
 \newlabel{sec:int4}{{5}{5}{INT4 Mitigation and the L2 Cache Barrier}{section.34}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Wikitext-2 perplexity under INT4 quantization (DeepSeek-V2-Lite). Selective INT4 of reconstruction weights (\texttt  {kv\_b\_proj}) adds only +0.051~PPL, well within the +0.5 quality threshold. Naive INT4 of all linear weights severely degrades quality.}}{5}{figure.caption.37}\protected@file@percent }
-\newlabel{fig:ppl}{{5}{5}{Wikitext-2 perplexity under INT4 quantization (DeepSeek-V2-Lite). Selective INT4 of reconstruction weights (\texttt {kv\_b\_proj}) adds only +0.051~PPL, well within the +0.5 quality threshold. Naive INT4 of all linear weights severely degrades quality}{figure.caption.37}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Perplexity Evaluation}{5}{subsection.35}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Wikitext-2 perplexity under INT4 quantization. \texttt  {kv\_b\_proj} is the reconstruction weight ($W^\text  {kc}$/$W^\text  {vc}$ combined).}}{5}{table.caption.36}\protected@file@percent }
 \newlabel{tab:ppl}{{9}{5}{Wikitext-2 perplexity under INT4 quantization. \texttt {kv\_b\_proj} is the reconstruction weight ($W^\text {kc}$/$W^\text {vc}$ combined)}{table.caption.36}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces H100 roofline with MLA reconstruction BMMs. All operating points fall on the memory-bound slope, well below the compute ceiling (crossover at AI=295). Even at bs=128 (AI=93), reconstruction achieves only 55\% of the memory ceiling.}}{5}{figure.caption.33}\protected@file@percent }
+\newlabel{fig:roofline}{{4}{5}{H100 roofline with MLA reconstruction BMMs. All operating points fall on the memory-bound slope, well below the compute ceiling (crossover at AI=295). Even at bs=128 (AI=93), reconstruction achieves only 55\% of the memory ceiling}{figure.caption.33}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Wikitext-2 perplexity under INT4 quantization (DeepSeek-V2-Lite). Selective INT4 of reconstruction weights (\texttt  {kv\_b\_proj}) adds only +0.051~PPL, well within the +0.5 quality threshold. Naive INT4 of all linear weights severely degrades quality.}}{5}{figure.caption.37}\protected@file@percent }
+\newlabel{fig:ppl}{{5}{5}{Wikitext-2 perplexity under INT4 quantization (DeepSeek-V2-Lite). Selective INT4 of reconstruction weights (\texttt {kv\_b\_proj}) adds only +0.051~PPL, well within the +0.5 quality threshold. Naive INT4 of all linear weights severely degrades quality}{figure.caption.37}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Why Reconstruction Weights Are Quantization-Friendly}{5}{subsection.38}\protected@file@percent }
 \citation{roofline}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Theoretical Speedup}{6}{subsection.42}\protected@file@percent }
@@ -77,20 +77,20 @@
 \newlabel{sec:l2barrier}{{5.5}{6}{The L2 Cache Barrier: Why Roofline Fails for Small-Matrix MLA Reconstruction}{subsection.48}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces The L2 cache barrier. Roofline analysis predicts 2--3.9$\times $ INT4 speedup assuming HBM-bound operation. Measured performance shows 0.2--0.5$\times $: the INT4 kernel is \emph  {slower} than cuBLAS FP16. The 16\,MB reconstruction weight fits in H100's 50\,MB L2; after first access, weights are served from L2 at ${\sim }$12\,TB/s, making HBM savings irrelevant.}}{6}{figure.caption.47}\protected@file@percent }
 \newlabel{fig:l2barrier}{{6}{6}{The L2 cache barrier. Roofline analysis predicts 2--3.9$\times $ INT4 speedup assuming HBM-bound operation. Measured performance shows 0.2--0.5$\times $: the INT4 kernel is \emph {slower} than cuBLAS FP16. The 16\,MB reconstruction weight fits in H100's 50\,MB L2; after first access, weights are served from L2 at ${\sim }$12\,TB/s, making HBM savings irrelevant}{figure.caption.47}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Weight-size scaling across the L2 boundary. INT4/FP16 time ratio vs.\ FP16 weight size. Below 50~MB (green, L2-resident), INT4 is ${\sim }$1.9$\times $ slower. Above 50~MB, the ratio drops sharply toward parity as FP16 falls back to HBM. At MLA's 16~MB operating point (arrow), FP16 benefits fully from L2 residency.}}{6}{figure.caption.49}\protected@file@percent }
+\newlabel{fig:l2sweep}{{7}{6}{Weight-size scaling across the L2 boundary. INT4/FP16 time ratio vs.\ FP16 weight size. Below 50~MB (green, L2-resident), INT4 is ${\sim }$1.9$\times $ slower. Above 50~MB, the ratio drops sharply toward parity as FP16 falls back to HBM. At MLA's 16~MB operating point (arrow), FP16 benefits fully from L2 residency}{figure.caption.49}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}End-to-End Context}{7}{section.50}\protected@file@percent }
+\newlabel{sec:e2e}{{6}{7}{End-to-End Context}{section.50}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces Decode step decomposition, Qwen2.5-7B, bs=64.}}{7}{table.caption.51}\protected@file@percent }
+\newlabel{tab:e2e}{{12}{7}{Decode step decomposition, Qwen2.5-7B, bs=64}{table.caption.51}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Decode step decomposition (Qwen2.5-7B, bs=64). Linear layers dominate at 71\%; attention is ${\sim }$20\%. For MLA, reconstruction BMMs add to this: at bs=1, reconstruction (2.17\,ms) exceeds attention (1.40\,ms).}}{7}{figure.caption.52}\protected@file@percent }
+\newlabel{fig:e2e}{{8}{7}{Decode step decomposition (Qwen2.5-7B, bs=64). Linear layers dominate at 71\%; attention is ${\sim }$20\%. For MLA, reconstruction BMMs add to this: at bs=1, reconstruction (2.17\,ms) exceeds attention (1.40\,ms)}{figure.caption.52}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Reproducibility}{7}{section.53}\protected@file@percent }
+\newlabel{sec:repro}{{7}{7}{Reproducibility}{section.53}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces Reproducibility across 3 independent trials (warmup=20, iters=200).}}{7}{table.caption.54}\protected@file@percent }
+\newlabel{tab:repro}{{13}{7}{Reproducibility across 3 independent trials (warmup=20, iters=200)}{table.caption.54}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8}Discussion}{7}{section.55}\protected@file@percent }
 \citation{volkov2010}
-\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Decode step decomposition (Qwen2.5-7B, bs=64). Linear layers dominate at 71\%; attention is ${\sim }$20\%. For MLA, reconstruction BMMs add to this: at bs=1, reconstruction (2.17\,ms) exceeds attention (1.40\,ms).}}{7}{figure.caption.51}\protected@file@percent }
-\newlabel{fig:e2e}{{7}{7}{Decode step decomposition (Qwen2.5-7B, bs=64). Linear layers dominate at 71\%; attention is ${\sim }$20\%. For MLA, reconstruction BMMs add to this: at bs=1, reconstruction (2.17\,ms) exceeds attention (1.40\,ms)}{figure.caption.51}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {6}End-to-End Context}{7}{section.49}\protected@file@percent }
-\newlabel{sec:e2e}{{6}{7}{End-to-End Context}{section.49}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces Decode step decomposition, Qwen2.5-7B, bs=64.}}{7}{table.caption.50}\protected@file@percent }
-\newlabel{tab:e2e}{{12}{7}{Decode step decomposition, Qwen2.5-7B, bs=64}{table.caption.50}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {7}Reproducibility}{7}{section.52}\protected@file@percent }
-\newlabel{sec:repro}{{7}{7}{Reproducibility}{section.52}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces Reproducibility across 3 independent trials (warmup=20, iters=200).}}{7}{table.caption.53}\protected@file@percent }
-\newlabel{tab:repro}{{13}{7}{Reproducibility across 3 independent trials (warmup=20, iters=200)}{table.caption.53}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {8}Discussion}{7}{section.54}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.1}Implications for Compiler-Generated Attention}{7}{subsection.55}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.2}The Occupancy Paradox as Design Principle}{7}{subsection.59}\protected@file@percent }
 \citation{flashattention}
 \citation{flashattention2}
 \citation{flashinfer}
@@ -104,17 +104,19 @@
 \citation{awq}
 \citation{kvquant}
 \citation{quarot}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.1}Implications for Compiler-Generated Attention}{8}{subsection.56}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.2}The Occupancy Paradox as Design Principle}{8}{subsection.60}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.3}MLA: Compression Shifts the Bottleneck}{8}{subsection.61}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.4}Selective Quantization: Quality Result}{8}{subsection.62}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.5}Limitations}{8}{subsection.63}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {9}Related Work}{8}{section.64}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {10}Conclusion}{8}{section.65}\protected@file@percent }
 \bibstyle{plain}
 \bibdata{references}
 \bibcite{quarot}{1}
 \bibcite{flashattention2}{2}
 \bibcite{flashattention}{3}
 \bibcite{deepseekv2}{4}
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.3}MLA: Compression Shifts the Bottleneck}{8}{subsection.60}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.4}Selective Quantization: Quality Result}{8}{subsection.61}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.5}Limitations}{8}{subsection.62}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {9}Related Work}{8}{section.63}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {10}Conclusion}{8}{section.64}\protected@file@percent }
 \bibcite{deepseekv3}{5}
 \bibcite{gptq}{6}
 \bibcite{kvquant}{7}

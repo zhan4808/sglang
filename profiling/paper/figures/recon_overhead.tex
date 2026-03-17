@@ -1,0 +1,69 @@
+
+\documentclass[border=2pt]{standalone}
+\usepackage{times}
+\usepackage{amsmath,amssymb}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{groupplots}
+\usetikzlibrary{patterns}
+\definecolor{fiblue}{HTML}{2171B5}
+\definecolor{triorange}{HTML}{E6550D}
+\definecolor{reconred}{HTML}{CB181D}
+\definecolor{attnblue}{HTML}{6BAED6}
+\definecolor{predgreen}{HTML}{31A354}
+\definecolor{measred}{HTML}{DE2D26}
+\pgfplotsset{
+  every axis/.append style={
+    label style={font=\small},
+    tick label style={font=\footnotesize},
+    legend style={font=\footnotesize, legend cell align=left},
+  },
+}
+\newlength{\columnwidth}
+\setlength{\columnwidth}{3.4in}
+\begin{document}
+
+
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth,
+  height=0.65\columnwidth,
+  ybar stacked,
+  bar width=11pt,
+  xlabel={Batch Size},
+  ylabel={Per-Layer Time ($\mu$s)},
+  symbolic x coords={1,4,16,64,128,256,512},
+  xtick=data,
+  ymin=0, ymax=780,
+  grid=major, grid style={gray!30},
+  enlarge x limits=0.1,
+  clip=false,
+  legend style={at={(0.03,0.97)}, anchor=north west},
+]
+\addplot[fill=reconred!75, draw=reconred!90] coordinates {
+  (1,35.6) (4,35.4) (16,34.2) (64,34.1) (128,38.4) (256,66.9) (512,109.4)
+};
+\addplot[fill=attnblue!75, draw=attnblue!90] coordinates {
+  (1,23.0) (4,27.2) (16,40.4) (64,83.6) (128,154.4) (256,293.6) (512,584.5)
+};
+\node[font=\scriptsize\bfseries, reconred!80, anchor=south]
+  at (axis cs:1,62) {61\%};
+\node[font=\scriptsize\bfseries, reconred!80, anchor=south]
+  at (axis cs:4,66) {57\%};
+\node[font=\scriptsize\bfseries, reconred!80, anchor=south]
+  at (axis cs:16,78) {46\%};
+\node[font=\scriptsize, reconred!80, anchor=south]
+  at (axis cs:64,121) {29\%};
+\node[font=\scriptsize, reconred!80, anchor=south]
+  at (axis cs:128,196) {20\%};
+\node[font=\scriptsize, reconred!80, anchor=south]
+  at (axis cs:256,364) {19\%};
+\node[font=\scriptsize, reconred!80, anchor=south]
+  at (axis cs:512,698) {16\%};
+\legend{Reconstruction BMMs, Attention Kernel}
+\end{axis}
+\end{tikzpicture}
+
+
+\end{document}
+

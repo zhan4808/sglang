@@ -1,0 +1,63 @@
+
+\documentclass[border=2pt]{standalone}
+\usepackage{times}
+\usepackage{amsmath,amssymb}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{groupplots}
+\usetikzlibrary{patterns}
+\definecolor{fiblue}{HTML}{2171B5}
+\definecolor{triorange}{HTML}{E6550D}
+\definecolor{reconred}{HTML}{CB181D}
+\definecolor{attnblue}{HTML}{6BAED6}
+\definecolor{predgreen}{HTML}{31A354}
+\definecolor{measred}{HTML}{DE2D26}
+\pgfplotsset{
+  every axis/.append style={
+    label style={font=\small},
+    tick label style={font=\footnotesize},
+    legend style={font=\footnotesize, legend cell align=left},
+  },
+}
+\newlength{\columnwidth}
+\setlength{\columnwidth}{3.4in}
+\begin{document}
+
+
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth,
+  height=0.62\columnwidth,
+  ybar,
+  bar width=8pt,
+  xlabel={Batch Size},
+  ylabel={INT4 / FP16 Speedup},
+  symbolic x coords={1,4,16,64,128,256},
+  xtick=data,
+  ymin=0, ymax=4.8,
+  ytick={0,0.5,1,1.5,2,2.5,3,3.5,4,4.5},
+  grid=major, grid style={gray!30},
+  enlarge x limits=0.12,
+  clip=false,
+  extra y ticks={1.0},
+  extra y tick labels={},
+  extra y tick style={grid style={black!50, thick, dashed}},
+]
+\addplot[fill=predgreen!60, draw=predgreen!80] coordinates {
+  (1,3.94) (4,3.89) (16,3.67) (64,3.00) (128,2.50) (256,2.00)
+};
+\addplot[fill=measred!60, draw=measred!80] coordinates {
+  (1,0.49) (4,0.50) (16,0.44) (64,0.28) (128,0.21) (256,0.23)
+};
+\node[font=\scriptsize, black!60, anchor=south west]
+  at (axis cs:1,1.04) {1$\times$ parity};
+\draw[<->, black!70, thick]
+  (axis cs:1,0.58) -- (axis cs:1,3.85)
+  node[midway, right, font=\scriptsize, black!70] {8$\times$};
+\legend{Roofline predicted, Measured INT4/FP16}
+\end{axis}
+\end{tikzpicture}
+
+
+\end{document}
+

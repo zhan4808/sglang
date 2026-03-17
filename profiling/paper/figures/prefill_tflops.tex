@@ -1,0 +1,64 @@
+
+\documentclass[border=2pt]{standalone}
+\usepackage{times}
+\usepackage{amsmath,amssymb}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{groupplots}
+\usetikzlibrary{patterns}
+\definecolor{fiblue}{HTML}{2171B5}
+\definecolor{triorange}{HTML}{E6550D}
+\definecolor{reconred}{HTML}{CB181D}
+\definecolor{attnblue}{HTML}{6BAED6}
+\definecolor{predgreen}{HTML}{31A354}
+\definecolor{measred}{HTML}{DE2D26}
+\pgfplotsset{
+  every axis/.append style={
+    label style={font=\small},
+    tick label style={font=\footnotesize},
+    legend style={font=\footnotesize, legend cell align=left},
+  },
+}
+\newlength{\columnwidth}
+\setlength{\columnwidth}{3.4in}
+\begin{document}
+
+
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth,
+  height=0.62\columnwidth,
+  ybar,
+  bar width=5pt,
+  xlabel={Configuration (batch size $\times$ sequence length)},
+  ylabel={TFLOPS},
+  symbolic x coords={1x512,1x1K,1x2K,1x4K,4x2K,4x4K,16x2K,16x4K},
+  xtick=data,
+  x tick label style={rotate=45, anchor=east, font=\scriptsize},
+  ymin=0, ymax=1100,
+  ytick={0,200,400,600,800,1000},
+  grid=major, grid style={gray!30},
+  enlarge x limits=0.08,
+  clip=false,
+]
+\addplot[fill=fiblue, draw=fiblue!80] coordinates {
+  (1x512,88) (1x1K,264) (1x2K,387) (1x4K,485)
+  (4x2K,448) (4x4K,552) (16x2K,444) (16x4K,512)
+};
+\addplot[fill=triorange, draw=triorange!80] coordinates {
+  (1x512,54) (1x1K,126) (1x2K,161) (1x4K,188)
+  (4x2K,183) (4x4K,204) (16x2K,195) (16x4K,209)
+};
+\addplot[dashed, black!40, thin, forget plot, sharp plot]
+  coordinates {(1x512,990) (16x4K,990)};
+\node[font=\scriptsize, black!50, anchor=north west]
+  at (axis cs:1x512,980) {H100 peak (990 TF)};
+\node[font=\tiny, fiblue!80, anchor=south]
+  at (axis cs:4x4K,558) {\textbf{552}};
+\legend{FlashInfer, Triton}
+\end{axis}
+\end{tikzpicture}
+
+
+\end{document}
+

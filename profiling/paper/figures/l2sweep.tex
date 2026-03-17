@@ -1,0 +1,69 @@
+
+\documentclass[border=2pt]{standalone}
+\usepackage{times}
+\usepackage{amsmath,amssymb}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{groupplots}
+\usetikzlibrary{patterns}
+\definecolor{fiblue}{HTML}{2171B5}
+\definecolor{triorange}{HTML}{E6550D}
+\definecolor{reconred}{HTML}{CB181D}
+\definecolor{attnblue}{HTML}{6BAED6}
+\definecolor{predgreen}{HTML}{31A354}
+\definecolor{measred}{HTML}{DE2D26}
+\pgfplotsset{
+  every axis/.append style={
+    label style={font=\small},
+    tick label style={font=\footnotesize},
+    legend style={font=\footnotesize, legend cell align=left},
+  },
+}
+\newlength{\columnwidth}
+\setlength{\columnwidth}{3.4in}
+\begin{document}
+
+
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth,
+  height=0.62\columnwidth,
+  xlabel={FP16 Weight Size (MB)},
+  ylabel={INT4 / FP16 Time Ratio},
+  xmin=0, xmax=135,
+  ymin=0.9, ymax=2.1,
+  ytick={1.0,1.2,1.4,1.6,1.8,2.0},
+  grid=major, grid style={gray!30},
+  clip=false,
+  legend style={at={(0.97,0.97)}, anchor=north east},
+  extra y ticks={1.0},
+  extra y tick labels={},
+  extra y tick style={grid style={black!50, thick, dashed}},
+]
+% L2 capacity region
+\fill[predgreen!8] (axis cs:0,0.9) rectangle (axis cs:50,2.1);
+\node[font=\scriptsize, predgreen!60, anchor=north west] at (axis cs:1,2.05) {L2-resident};
+\draw[predgreen!40, thick, dashed] (axis cs:50,0.9) -- (axis cs:50,2.1);
+\node[font=\scriptsize, black!50, anchor=south, rotate=90] at (axis cs:51,1.65) {50\,MB L2};
+% bs=1
+\addplot[reconred, mark=*, mark size=2.5, thick] coordinates {
+  (8,1.912) (12,1.887) (16,1.864) (24,1.908) (32,1.956)
+  (40,1.460) (48,1.322) (56,1.282) (64,1.210) (80,1.152) (96,1.124) (128,1.078)
+};
+% bs=4
+\addplot[fiblue, mark=square*, mark size=2, thick] coordinates {
+  (8,1.915) (12,1.847) (16,1.858) (24,1.847) (32,1.943)
+  (40,1.433) (48,1.285) (56,1.251) (64,1.200) (80,1.159) (96,1.137) (128,1.082)
+};
+% 1x parity label
+\node[font=\scriptsize, black!50, anchor=south west] at (axis cs:100,1.02) {1$\times$ parity};
+% MLA operating point
+\draw[->, black!60, thick] (axis cs:16,1.55) -- (axis cs:16,1.88);
+\node[font=\scriptsize, black!60, anchor=south] at (axis cs:16,1.50) {MLA};
+\legend{bs=1, bs=4}
+\end{axis}
+\end{tikzpicture}
+
+
+\end{document}
+

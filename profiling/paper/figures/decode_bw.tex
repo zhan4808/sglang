@@ -1,0 +1,70 @@
+
+\documentclass[border=2pt]{standalone}
+\usepackage{times}
+\usepackage{amsmath,amssymb}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{groupplots}
+\usetikzlibrary{patterns}
+\definecolor{fiblue}{HTML}{2171B5}
+\definecolor{triorange}{HTML}{E6550D}
+\definecolor{reconred}{HTML}{CB181D}
+\definecolor{attnblue}{HTML}{6BAED6}
+\definecolor{predgreen}{HTML}{31A354}
+\definecolor{measred}{HTML}{DE2D26}
+\pgfplotsset{
+  every axis/.append style={
+    label style={font=\small},
+    tick label style={font=\footnotesize},
+    legend style={font=\footnotesize, legend cell align=left},
+  },
+}
+\newlength{\columnwidth}
+\setlength{\columnwidth}{3.4in}
+\begin{document}
+
+
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth,
+  height=0.58\columnwidth,
+  xlabel={Batch Size},
+  ylabel={HBM Bandwidth (GB/s)},
+  xmode=log, log basis x=2,
+  xtick={1,4,16,64,128,256},
+  xticklabels={1,4,16,64,128,256},
+  ymin=0, ymax=3700,
+  ytick={0,500,1000,1500,2000,2500,3000,3500},
+  grid=major, grid style={gray!30},
+  every axis plot/.append style={thick},
+  ylabel near ticks,
+  clip=false,
+  legend style={at={(0.97,0.03)}, anchor=south east},
+]
+\addplot[dashed, black!40, thin, forget plot]
+  coordinates {(0.7,3350) (350,3350)};
+\node[font=\scriptsize, black!50, anchor=south west]
+  at (axis cs:1,3370) {H100 peak (3{,}350 GB/s)};
+\addplot[dotted, fiblue!40, thin, forget plot]
+  coordinates {(0.7,2987) (350,2987)};
+\node[font=\scriptsize, fiblue!50, anchor=north east]
+  at (axis cs:256,2970) {89\%};
+\addplot[dotted, triorange!40, thin, forget plot]
+  coordinates {(0.7,2669) (350,2669)};
+\node[font=\scriptsize, triorange!50, anchor=north east]
+  at (axis cs:256,2650) {80\%};
+\addplot[fiblue, mark=*, mark size=2] coordinates {
+  (1,298) (4,1056) (16,2317) (64,2870) (128,2957) (256,2987)
+};
+\addplot[triorange, mark=square*, mark size=2] coordinates {
+  (1,147) (4,582) (16,1910) (64,2470) (128,2585) (256,2669)
+};
+\node[font=\tiny, black!70, anchor=north east] at (axis cs:1.6,270) {2.0$\times$};
+\node[font=\tiny, black!70, anchor=north west] at (axis cs:260,2987) {1.12$\times$};
+\legend{FlashInfer, Triton}
+\end{axis}
+\end{tikzpicture}
+
+
+\end{document}
+

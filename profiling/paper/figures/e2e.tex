@@ -1,0 +1,56 @@
+
+\documentclass[border=2pt]{standalone}
+\usepackage{times}
+\usepackage{amsmath,amssymb}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{groupplots}
+\usetikzlibrary{patterns}
+\definecolor{fiblue}{HTML}{2171B5}
+\definecolor{triorange}{HTML}{E6550D}
+\definecolor{reconred}{HTML}{CB181D}
+\definecolor{attnblue}{HTML}{6BAED6}
+\definecolor{predgreen}{HTML}{31A354}
+\definecolor{measred}{HTML}{DE2D26}
+\pgfplotsset{
+  every axis/.append style={
+    label style={font=\small},
+    tick label style={font=\footnotesize},
+    legend style={font=\footnotesize, legend cell align=left},
+  },
+}
+\newlength{\columnwidth}
+\setlength{\columnwidth}{3.4in}
+\begin{document}
+
+
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.92\columnwidth,
+  height=0.52\columnwidth,
+  xbar,
+  bar width=10pt,
+  xlabel={Share of Decode Step (\%)},
+  xmin=0, xmax=82,
+  symbolic y coords={Other,RoPE,Activation,Norms,{Attention},{Linear}},
+  ytick=data,
+  y tick label style={font=\small},
+  nodes near coords={\pgfmathprintnumber\pgfplotspointmeta\%},
+  nodes near coords style={font=\scriptsize, anchor=west},
+  grid=major, grid style={gray!20},
+  enlarge y limits=0.22,
+]
+\addplot[fill=fiblue!50, draw=fiblue!70] coordinates {
+  (70.6,{Linear})
+  (19.6,{Attention})
+  (2.0,Norms)
+  (1.4,Activation)
+  (0.8,RoPE)
+  (5.5,Other)
+};
+\end{axis}
+\end{tikzpicture}
+
+
+\end{document}
+

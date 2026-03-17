@@ -1,0 +1,67 @@
+
+\documentclass[border=2pt]{standalone}
+\usepackage{times}
+\usepackage{amsmath,amssymb}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{groupplots}
+\usetikzlibrary{patterns}
+\definecolor{fiblue}{HTML}{2171B5}
+\definecolor{triorange}{HTML}{E6550D}
+\definecolor{reconred}{HTML}{CB181D}
+\definecolor{attnblue}{HTML}{6BAED6}
+\definecolor{predgreen}{HTML}{31A354}
+\definecolor{measred}{HTML}{DE2D26}
+\pgfplotsset{
+  every axis/.append style={
+    label style={font=\small},
+    tick label style={font=\footnotesize},
+    legend style={font=\footnotesize, legend cell align=left},
+  },
+}
+\newlength{\columnwidth}
+\setlength{\columnwidth}{3.4in}
+\begin{document}
+
+
+\begin{tikzpicture}
+\begin{axis}[
+  width=\columnwidth,
+  height=0.58\columnwidth,
+  ybar,
+  bar width=28pt,
+  ylabel={Perplexity (PPL $\downarrow$)},
+  symbolic x coords={{FP16 baseline},{INT4 selective},{INT4 all weights}},
+  xtick=data,
+  x tick label style={font=\small, align=center, text width=2.4cm},
+  ymin=0, ymax=15,
+  ytick={0,2,4,6,8,10,12,14},
+  grid=major, grid style={gray!30},
+  enlarge x limits=0.25,
+  clip=false,
+]
+\addplot[fill=fiblue!50, draw=fiblue!70] coordinates {
+  ({FP16 baseline}, 5.727)
+  ({INT4 selective}, 5.777)
+  ({INT4 all weights}, 11.784)
+};
+\addplot[dashed, reconred!50, thick, forget plot, sharp plot]
+  coordinates {({FP16 baseline},6.227) ({INT4 all weights},6.227)};
+\node[font=\small, reconred!60, anchor=south west]
+  at (axis cs:{FP16 baseline},6.4) {+0.5 PPL threshold};
+\node[font=\small\bfseries, white, anchor=north]
+  at (axis cs:{FP16 baseline},5.5) {5.73};
+\node[font=\small\bfseries, white, anchor=north]
+  at (axis cs:{INT4 selective},5.55) {5.78};
+\node[font=\small\bfseries, white, anchor=north]
+  at (axis cs:{INT4 all weights},11.55) {11.78};
+\node[font=\small, predgreen!80!black, anchor=north]
+  at (axis cs:{INT4 selective},4.6) {$\Delta$\,=\,+0.051};
+\node[font=\small, reconred!80, anchor=south]
+  at (axis cs:{INT4 all weights},12.1) {$\Delta$\,=\,+6.057};
+\end{axis}
+\end{tikzpicture}
+
+
+\end{document}
+
