@@ -106,7 +106,8 @@ def main():
 
     elif kernel_type == "int4":
         w_packed, scales = quantize_weights_int4(w)
-        BLOCK_M = 1
+        # Triton dot requires tile dims >= 16 on this stack.
+        BLOCK_M = 16
         BLOCK_N = min(64, d_lora)
         BLOCK_K = min(128, D_NOPE)
         if BLOCK_K < 2:
