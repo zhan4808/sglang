@@ -104,9 +104,9 @@ def batched_int4_gemm(A_fp16, B_packed, scales, K,
                        BLOCK_M=16, BLOCK_N=64, BLOCK_K=128):
     H, M, _ = A_fp16.shape
     _, _, N = B_packed.shape
-    BLOCK_M = min(BLOCK_M, max(1, M))
-    if BLOCK_M > 1:
-        BLOCK_M = 1 << (BLOCK_M - 1).bit_length()
+    # Triton dot on this stack requires tile dims >= 16.
+    BLOCK_M = max(16, min(BLOCK_M, max(16, M)))
+    BLOCK_M = 1 << (BLOCK_M - 1).bit_length()
     BLOCK_N = min(BLOCK_N, N)
     BLOCK_K = min(BLOCK_K, K)
     if BLOCK_K < 2:
@@ -187,9 +187,8 @@ def bench_fp16(x, w, warmup=WARMUP, iters=ITERS,
 def bench_int4(x, w_packed, scales, K, warmup=WARMUP, iters=ITERS,
                pollute_buf=None, pollute_stream=None):
     BS = x.shape[1]
-    BLOCK_M = min(16, max(1, BS))
-    if BLOCK_M > 1:
-        BLOCK_M = 1 << (BLOCK_M - 1).bit_length()
+    BLOCK_M = max(16, BS)
+    BLOCK_M = 1 << (BLOCK_M - 1).bit_length()
     for _ in range(warmup):
         if pollute_buf is not None:
             launch_l2_pollution(pollute_buf, pollute_stream)
@@ -311,8 +310,8 @@ def experiment_b():
         ws_int4 = [quantize_weights_int4(w) for w in ws_fp16]
 
         BLOCK_M = min(16, max(1, bs))
-        if BLOCK_M > 1:
-            BLOCK_M = 1 << (BLOCK_M - 1).bit_length()
+        BLOCK_M = max(16, BLOCK_M)
+        BLOCK_M = 1 << (BLOCK_M - 1).bit_length()
 
         # ── Mode A: single matrix (L2-resident) ──
         w_single = ws_fp16[0]

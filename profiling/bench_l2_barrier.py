@@ -94,9 +94,10 @@ def batched_int4_gemm(A_fp16, B_packed, scales, K,
                        BLOCK_M=16, BLOCK_N=64, BLOCK_K=128):
     H, M, _ = A_fp16.shape
     _, _, N = B_packed.shape
-    BLOCK_M = min(BLOCK_M, max(1, M))
-    if BLOCK_M > 1:
-        BLOCK_M = 1 << (BLOCK_M - 1).bit_length()
+    # Triton dot on this stack requires tile dims >= 16.
+    # Keep BLOCK_M >= 16 even for tiny M (BS=1/4), masking handles bounds.
+    BLOCK_M = max(16, min(BLOCK_M, max(16, M)))
+    BLOCK_M = 1 << (BLOCK_M - 1).bit_length()
     BLOCK_N = min(BLOCK_N, N)
     BLOCK_K = min(BLOCK_K, K)
     if BLOCK_K < 2:
@@ -182,6 +183,16 @@ D_LORA_SWEEP = [256, 384, 512, 768, 1024, 1280, 1536, 1792, 2048, 2560, 3072, 40
 BATCH_SIZES = [1, 4]
 
 
+def infer_l2_threshold_mb(gpu_name: str) -> float:
+    name = gpu_name.upper()
+    if "A100" in name:
+        return 40.0
+    if "H100" in name:
+        return 50.0
+    # Conservative default if unknown GPU
+    return 40.0
+
+
 def main():
     print("=" * 70)
     print("L2 Cache Barrier Experiment")
@@ -189,12 +200,13 @@ def main():
     print(f"H={H}, D_NOPE={D_NOPE} (fixed K dim)")
     print(f"Sweeping d_lora (N dim): {D_LORA_SWEEP}")
     print(f"Batch sizes: {BATCH_SIZES}")
-    print(f"H100 L2 cache = 50 MB")
     print(f"Warmup={WARMUP}, Iters={ITERS}")
     print()
 
     gpu_name = torch.cuda.get_device_name(0)
+    l2_threshold_mb = infer_l2_threshold_mb(gpu_name)
     print(f"GPU: {gpu_name}")
+    print(f"Estimated L2 threshold = {l2_threshold_mb:.0f} MB")
     print()
 
     results = []
@@ -210,7 +222,7 @@ def main():
         for d_lora in D_LORA_SWEEP:
             wt_bytes = H * D_NOPE * d_lora * 2
             wt_mb = wt_bytes / (1024 * 1024)
-            fits_l2 = "yes" if wt_mb < 50 else "NO"
+            fits_l2 = "yes" if wt_mb < l2_threshold_mb else "NO"
 
             try:
                 fp16_ms = bench_fp16_bmm(H, bs, D_NOPE, d_lora)
@@ -231,13 +243,17 @@ def main():
                 "batch_size": bs,
                 "d_lora": d_lora,
                 "weight_mb": round(wt_mb, 1),
-                "fits_l2": wt_mb < 50,
+                "fits_l2": wt_mb < l2_threshold_mb,
                 "fp16_ms": round(fp16_ms, 4),
                 "int4_ms": round(int4_ms, 4),
                 "int4_fp16_ratio": round(ratio, 3),
             })
 
     # Save results
+    if not results:
+        print("\nNo successful measurements were collected.")
+        return
+
     csv_path = "results_l2_barrier.csv"
     with open(csv_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=results[0].keys())
@@ -260,10 +276,10 @@ def main():
         above = [r for r in bs1 if not r["fits_l2"]]
         if below:
             avg_below = sum(r["int4_fp16_ratio"] for r in below) / len(below)
-            print(f"Avg INT4/FP16 ratio (weight < 50 MB, L2-resident):  {avg_below:.2f}x")
+            print(f"Avg INT4/FP16 ratio (weight < {l2_threshold_mb:.0f} MB, L2-resident):  {avg_below:.2f}x")
         if above:
             avg_above = sum(r["int4_fp16_ratio"] for r in above) / len(above)
-            print(f"Avg INT4/FP16 ratio (weight > 50 MB, HBM-bound):    {avg_above:.2f}x")
+            print(f"Avg INT4/FP16 ratio (weight > {l2_threshold_mb:.0f} MB, HBM-bound):    {avg_above:.2f}x")
         if below and above:
             print(f"Ratio improvement when crossing L2 boundary:         {avg_above/avg_below:.2f}x")
             crosses = any(r["int4_fp16_ratio"] <= 1.0 for r in above)
@@ -273,7 +289,7 @@ def main():
                       f"({first['weight_mb']} MB) ***")
             else:
                 print(f"\nINT4 did not beat FP16 at any size (dequant overhead may dominate)")
-                print("But the ratio should still IMPROVE past 50 MB, confirming L2 hypothesis.")
+                print(f"But the ratio should still IMPROVE past {l2_threshold_mb:.0f} MB, confirming L2 hypothesis.")
             best = min(above, key=lambda r: r["int4_fp16_ratio"])
             worst = min(below, key=lambda r: r["int4_fp16_ratio"])
             print(f"\nBest ratio below L2:  {min(r['int4_fp16_ratio'] for r in below):.2f}x "
