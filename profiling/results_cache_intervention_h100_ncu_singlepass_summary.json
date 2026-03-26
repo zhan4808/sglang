@@ -1,0 +1,22 @@
+{
+  "fp16_warm": {
+    "dram__throughput.avg.pct_of_peak_sustained_elapsed": 48.43,
+    "sm__throughput.avg.pct_of_peak_sustained_elapsed": 7.96,
+    "lts__t_sector_hit_rate.pct": 7.19
+  },
+  "fp16_cold": {
+    "dram__throughput.avg.pct_of_peak_sustained_elapsed": 48.82,
+    "sm__throughput.avg.pct_of_peak_sustained_elapsed": 8.06,
+    "lts__t_sector_hit_rate.pct": 7.24
+  },
+  "int4_warm": {
+    "dram__throughput.avg.pct_of_peak_sustained_elapsed": 11.4,
+    "sm__throughput.avg.pct_of_peak_sustained_elapsed": 45.14,
+    "lts__t_sector_hit_rate.pct": 23.03
+  },
+  "int4_cold": {
+    "dram__throughput.avg.pct_of_peak_sustained_elapsed": 11.5,
+    "sm__throughput.avg.pct_of_peak_sustained_elapsed": 45.61,
+    "lts__t_sector_hit_rate.pct": 22.97
+  }
+}

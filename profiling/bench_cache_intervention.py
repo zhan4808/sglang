@@ -206,20 +206,24 @@ def run_ncu_target(args: argparse.Namespace) -> None:
         maybe_evict()
         run_int4(x, w_packed, scales)
 
-    # Prime condition state.
+    # Prime warm state without profiling.
     for _ in range(20):
         if args.kernel in ("fp16", "both"):
-            run_fp16_only()
+            run_fp16(x, w)
         if args.kernel in ("int4", "both"):
-            run_int4_only()
+            run_int4(x, w_packed, scales)
     torch.cuda.synchronize()
 
+    # For cold condition, evict right before the single profiled kernel.
+    if args.condition in ("evict1x", "evict4x"):
+        maybe_evict()
+
+    # Single profiled launch to preserve cache intervention semantics.
     torch.cuda.cudart().cudaProfilerStart()
-    for _ in range(3):
-        if args.kernel in ("fp16", "both"):
-            run_fp16_only()
-        if args.kernel in ("int4", "both"):
-            run_int4_only()
+    if args.kernel in ("fp16", "both"):
+        run_fp16(x, w)
+    if args.kernel in ("int4", "both"):
+        run_int4(x, w_packed, scales)
     torch.cuda.synchronize()
     torch.cuda.cudart().cudaProfilerStop()
 
