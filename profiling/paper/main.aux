@@ -77,20 +77,27 @@
 \newlabel{sec:l2barrier}{{5.5}{6}{The L2 Cache Barrier: Why Roofline Fails for Small-Matrix MLA Reconstruction}{subsection.48}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces The L2 cache barrier. Roofline analysis predicts 2--3.9$\times $ INT4 speedup assuming HBM-bound operation. Measured performance shows 0.2--0.5$\times $: the INT4 kernel is \emph  {slower} than cuBLAS FP16. The 16\,MB reconstruction weight fits in H100's 50\,MB L2; after first access, weights are served from L2 at ${\sim }$12\,TB/s, making HBM savings irrelevant.}}{6}{figure.caption.47}\protected@file@percent }
 \newlabel{fig:l2barrier}{{6}{6}{The L2 cache barrier. Roofline analysis predicts 2--3.9$\times $ INT4 speedup assuming HBM-bound operation. Measured performance shows 0.2--0.5$\times $: the INT4 kernel is \emph {slower} than cuBLAS FP16. The 16\,MB reconstruction weight fits in H100's 50\,MB L2; after first access, weights are served from L2 at ${\sim }$12\,TB/s, making HBM savings irrelevant}{figure.caption.47}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Weight-size scaling across the L2 boundary. INT4/FP16 time ratio vs.\ FP16 weight size. Below 50~MB (green, L2-resident), INT4 is ${\sim }$1.9$\times $ slower. Above 50~MB, the ratio drops sharply toward parity as FP16 falls back to HBM. At MLA's 16~MB operating point (arrow), FP16 benefits fully from L2 residency.}}{6}{figure.caption.49}\protected@file@percent }
-\newlabel{fig:l2sweep}{{7}{6}{Weight-size scaling across the L2 boundary. INT4/FP16 time ratio vs.\ FP16 weight size. Below 50~MB (green, L2-resident), INT4 is ${\sim }$1.9$\times $ slower. Above 50~MB, the ratio drops sharply toward parity as FP16 falls back to HBM. At MLA's 16~MB operating point (arrow), FP16 benefits fully from L2 residency}{figure.caption.49}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {6}End-to-End Context}{7}{section.50}\protected@file@percent }
-\newlabel{sec:e2e}{{6}{7}{End-to-End Context}{section.50}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces Decode step decomposition, Qwen2.5-7B, bs=64.}}{7}{table.caption.51}\protected@file@percent }
-\newlabel{tab:e2e}{{12}{7}{Decode step decomposition, Qwen2.5-7B, bs=64}{table.caption.51}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Decode step decomposition (Qwen2.5-7B, bs=64). Linear layers dominate at 71\%; attention is ${\sim }$20\%. For MLA, reconstruction BMMs add to this: at bs=1, reconstruction (2.17\,ms) exceeds attention (1.40\,ms).}}{7}{figure.caption.52}\protected@file@percent }
-\newlabel{fig:e2e}{{8}{7}{Decode step decomposition (Qwen2.5-7B, bs=64). Linear layers dominate at 71\%; attention is ${\sim }$20\%. For MLA, reconstruction BMMs add to this: at bs=1, reconstruction (2.17\,ms) exceeds attention (1.40\,ms)}{figure.caption.52}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {7}Reproducibility}{7}{section.53}\protected@file@percent }
-\newlabel{sec:repro}{{7}{7}{Reproducibility}{section.53}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces Reproducibility across 3 independent trials (warmup=20, iters=200).}}{7}{table.caption.54}\protected@file@percent }
-\newlabel{tab:repro}{{13}{7}{Reproducibility across 3 independent trials (warmup=20, iters=200)}{table.caption.54}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {8}Discussion}{7}{section.55}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Cache-residency intervention at fixed MLA reconstruction shape (BS=1, normalized to FP16-warm). H100: FP16 rises from 1.00 to 1.34 under eviction, while INT4 rises from 1.85 to 1.62 relative to FP16-warm. A100 shows stronger asymmetry: FP16 rises from 1.00 to 1.22 while INT4 rises from 1.93 to 1.70. FP16 is 2--3$\times $ more sensitive to forced eviction than INT4, directly supporting L2-residency dependence of FP16 and dequantization-limited INT4 behavior.}}{7}{figure.caption.49}\protected@file@percent }
+\newlabel{fig:cache_intervention}{{7}{7}{Cache-residency intervention at fixed MLA reconstruction shape (BS=1, normalized to FP16-warm). H100: FP16 rises from 1.00 to 1.34 under eviction, while INT4 rises from 1.85 to 1.62 relative to FP16-warm. A100 shows stronger asymmetry: FP16 rises from 1.00 to 1.22 while INT4 rises from 1.93 to 1.70. FP16 is 2--3$\times $ more sensitive to forced eviction than INT4, directly supporting L2-residency dependence of FP16 and dequantization-limited INT4 behavior}{figure.caption.49}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Weight-size scaling across the L2 boundary on H100. INT4/FP16 time ratio vs.\ FP16 weight size. Below 50~MB (green, L2-resident), INT4 is ${\sim }$1.9$\times $ slower. Above 50~MB, the ratio drops sharply toward parity as FP16 falls back to HBM. At MLA's 16~MB operating point (arrow), FP16 benefits fully from L2 residency. Cross-hardware confirmation appears in the fixed-shape cache intervention result (Figure~\ref {fig:cache_intervention}).}}{7}{figure.caption.50}\protected@file@percent }
+\newlabel{fig:l2sweep}{{8}{7}{Weight-size scaling across the L2 boundary on H100. INT4/FP16 time ratio vs.\ FP16 weight size. Below 50~MB (green, L2-resident), INT4 is ${\sim }$1.9$\times $ slower. Above 50~MB, the ratio drops sharply toward parity as FP16 falls back to HBM. At MLA's 16~MB operating point (arrow), FP16 benefits fully from L2 residency. Cross-hardware confirmation appears in the fixed-shape cache intervention result (Figure~\ref {fig:cache_intervention})}{figure.caption.50}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}End-to-End Context}{7}{section.51}\protected@file@percent }
+\newlabel{sec:e2e}{{6}{7}{End-to-End Context}{section.51}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces Decode step decomposition, Qwen2.5-7B, bs=64.}}{7}{table.caption.52}\protected@file@percent }
+\newlabel{tab:e2e}{{12}{7}{Decode step decomposition, Qwen2.5-7B, bs=64}{table.caption.52}{}}
 \citation{volkov2010}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Decode step decomposition (Qwen2.5-7B, bs=64). Linear layers dominate at 71\%; attention is ${\sim }$20\%. For MLA, reconstruction BMMs add to this: at bs=1, reconstruction (2.17\,ms) exceeds attention (1.40\,ms).}}{8}{figure.caption.53}\protected@file@percent }
+\newlabel{fig:e2e}{{9}{8}{Decode step decomposition (Qwen2.5-7B, bs=64). Linear layers dominate at 71\%; attention is ${\sim }$20\%. For MLA, reconstruction BMMs add to this: at bs=1, reconstruction (2.17\,ms) exceeds attention (1.40\,ms)}{figure.caption.53}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Reproducibility}{8}{section.54}\protected@file@percent }
+\newlabel{sec:repro}{{7}{8}{Reproducibility}{section.54}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces Reproducibility across 3 independent trials (warmup=20, iters=200).}}{8}{table.caption.55}\protected@file@percent }
+\newlabel{tab:repro}{{13}{8}{Reproducibility across 3 independent trials (warmup=20, iters=200)}{table.caption.55}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8}Discussion}{8}{section.56}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.1}Implications for Compiler-Generated Attention}{8}{subsection.57}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.2}The Occupancy Paradox as Design Principle}{8}{subsection.61}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.3}MLA: Compression Shifts the Bottleneck}{8}{subsection.62}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.4}Selective Quantization: Quality Result}{8}{subsection.63}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.5}Limitations}{8}{subsection.64}\protected@file@percent }
 \citation{flashattention}
 \citation{flashattention2}
 \citation{flashinfer}
@@ -104,13 +111,6 @@
 \citation{awq}
 \citation{kvquant}
 \citation{quarot}
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.1}Implications for Compiler-Generated Attention}{8}{subsection.56}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.2}The Occupancy Paradox as Design Principle}{8}{subsection.60}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.3}MLA: Compression Shifts the Bottleneck}{8}{subsection.61}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.4}Selective Quantization: Quality Result}{8}{subsection.62}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {8.5}Limitations}{8}{subsection.63}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {9}Related Work}{8}{section.64}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {10}Conclusion}{8}{section.65}\protected@file@percent }
 \bibstyle{plain}
 \bibdata{references}
 \bibcite{quarot}{1}
@@ -126,5 +126,7 @@
 \bibcite{volkov2010}{11}
 \bibcite{roofline}{12}
 \bibcite{flashinfer}{13}
+\@writefile{toc}{\contentsline {section}{\numberline {9}Related Work}{9}{section.65}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {10}Conclusion}{9}{section.66}\protected@file@percent }
 \bibcite{sglang}{14}
-\gdef \@abspage@last{9}
+\gdef \@abspage@last{10}
