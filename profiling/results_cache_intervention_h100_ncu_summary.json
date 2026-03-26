@@ -1,0 +1,93 @@
+{
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "benchmark_results": [
+    {
+      "batch_size": 1,
+      "condition": "warm",
+      "fp16_ms": 0.018304,
+      "int4_ms": 0.03392,
+      "int4_fp16_ratio": 1.853147,
+      "fp16_norm_to_fp16_warm": 1.0,
+      "int4_norm_to_fp16_warm": 1.853147
+    },
+    {
+      "batch_size": 1,
+      "condition": "evict1x",
+      "fp16_ms": 0.023856,
+      "int4_ms": 0.039104,
+      "int4_fp16_ratio": 1.639168,
+      "fp16_norm_to_fp16_warm": 1.303322,
+      "int4_norm_to_fp16_warm": 2.136364
+    },
+    {
+      "batch_size": 1,
+      "condition": "evict4x",
+      "fp16_ms": 0.024576,
+      "int4_ms": 0.03984,
+      "int4_fp16_ratio": 1.621094,
+      "fp16_norm_to_fp16_warm": 1.342657,
+      "int4_norm_to_fp16_warm": 2.176573
+    },
+    {
+      "batch_size": 4,
+      "condition": "warm",
+      "fp16_ms": 0.018048,
+      "int4_ms": 0.033152,
+      "int4_fp16_ratio": 1.836879,
+      "fp16_norm_to_fp16_warm": 1.0,
+      "int4_norm_to_fp16_warm": 1.836879
+    },
+    {
+      "batch_size": 4,
+      "condition": "evict1x",
+      "fp16_ms": 0.02416,
+      "int4_ms": 0.039328,
+      "int4_fp16_ratio": 1.627815,
+      "fp16_norm_to_fp16_warm": 1.338652,
+      "int4_norm_to_fp16_warm": 2.179078
+    },
+    {
+      "batch_size": 4,
+      "condition": "evict4x",
+      "fp16_ms": 0.0244,
+      "int4_ms": 0.039616,
+      "int4_fp16_ratio": 1.623607,
+      "fp16_norm_to_fp16_warm": 1.35195,
+      "int4_norm_to_fp16_warm": 2.195035
+    }
+  ],
+  "ncu_summary": [
+    {
+      "condition": "warm",
+      "kernel": "fp16",
+      "dram_pct": 50.6967,
+      "sm_pct": 8.3467,
+      "l2_hit_rate_pct": 7.2233,
+      "warps_active_pct": 14.5567
+    },
+    {
+      "condition": "warm",
+      "kernel": "int4",
+      "dram_pct": 11.97,
+      "sm_pct": 47.82,
+      "l2_hit_rate_pct": 23.03,
+      "warps_active_pct": 33.2933
+    },
+    {
+      "condition": "evict4x",
+      "kernel": "fp16",
+      "dram_pct": 50.9467,
+      "sm_pct": 8.3933,
+      "l2_hit_rate_pct": 7.2267,
+      "warps_active_pct": 14.5667
+    },
+    {
+      "condition": "evict4x",
+      "kernel": "int4",
+      "dram_pct": 11.81,
+      "sm_pct": 47.2667,
+      "l2_hit_rate_pct": 22.9633,
+      "warps_active_pct": 33.2433
+    }
+  ]
+}
