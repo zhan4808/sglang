@@ -1,0 +1,69 @@
+{
+  "gpu": "NVIDIA A100-SXM4-80GB",
+  "l2_mb": 40,
+  "evict1x_mb": 48,
+  "evict4x_mb": 192,
+  "fixed_shape": {
+    "H": 128,
+    "D_NOPE": 128,
+    "D_LORA": 512
+  },
+  "warmup": 20,
+  "iters": 200,
+  "results": [
+    {
+      "batch_size": 1,
+      "condition": "warm",
+      "fp16_ms": 0.027648,
+      "int4_ms": 0.053248,
+      "int4_fp16_ratio": 1.925926,
+      "fp16_norm_to_fp16_warm": 1.0,
+      "int4_norm_to_fp16_warm": 1.925926
+    },
+    {
+      "batch_size": 1,
+      "condition": "evict1x",
+      "fp16_ms": 0.033792,
+      "int4_ms": 0.05632,
+      "int4_fp16_ratio": 1.666667,
+      "fp16_norm_to_fp16_warm": 1.222222,
+      "int4_norm_to_fp16_warm": 2.037037
+    },
+    {
+      "batch_size": 1,
+      "condition": "evict4x",
+      "fp16_ms": 0.033792,
+      "int4_ms": 0.057344,
+      "int4_fp16_ratio": 1.69697,
+      "fp16_norm_to_fp16_warm": 1.222222,
+      "int4_norm_to_fp16_warm": 2.074074
+    },
+    {
+      "batch_size": 4,
+      "condition": "warm",
+      "fp16_ms": 0.0256,
+      "int4_ms": 0.050176,
+      "int4_fp16_ratio": 1.96,
+      "fp16_norm_to_fp16_warm": 1.0,
+      "int4_norm_to_fp16_warm": 1.96
+    },
+    {
+      "batch_size": 4,
+      "condition": "evict1x",
+      "fp16_ms": 0.029696,
+      "int4_ms": 0.053248,
+      "int4_fp16_ratio": 1.793103,
+      "fp16_norm_to_fp16_warm": 1.16,
+      "int4_norm_to_fp16_warm": 2.08
+    },
+    {
+      "batch_size": 4,
+      "condition": "evict4x",
+      "fp16_ms": 0.029696,
+      "int4_ms": 0.053248,
+      "int4_fp16_ratio": 1.793103,
+      "fp16_norm_to_fp16_warm": 1.16,
+      "int4_norm_to_fp16_warm": 2.08
+    }
+  ]
+}

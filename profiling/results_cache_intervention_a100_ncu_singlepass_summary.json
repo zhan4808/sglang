@@ -1,0 +1,34 @@
+[
+  {
+    "condition": "warm",
+    "kernel": "fp16",
+    "dram_pct": 37.89,
+    "sm_pct": 19.06,
+    "l2_hit_rate_pct": 59.44,
+    "warps_active_pct": 37.0
+  },
+  {
+    "condition": "warm",
+    "kernel": "int4",
+    "dram_pct": 12.47,
+    "sm_pct": 59.9,
+    "l2_hit_rate_pct": 16.49,
+    "warps_active_pct": 35.8
+  },
+  {
+    "condition": "evict4x",
+    "kernel": "fp16",
+    "dram_pct": 38.02,
+    "sm_pct": 18.94,
+    "l2_hit_rate_pct": 58.72,
+    "warps_active_pct": 36.99
+  },
+  {
+    "condition": "evict4x",
+    "kernel": "int4",
+    "dram_pct": 12.39,
+    "sm_pct": 59.55,
+    "l2_hit_rate_pct": 16.45,
+    "warps_active_pct": 35.8
+  }
+]

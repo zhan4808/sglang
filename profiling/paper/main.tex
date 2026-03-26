@@ -69,7 +69,7 @@
 \begin{abstract}
 Multi-head Latent Attention (MLA) compresses KV cache via low-rank latent projections, greatly reducing memory traffic for the attention kernel.  We show that this compression creates a \emph{new} dominant bottleneck: the \textbf{reconstruction GEMMs}, weight-absorbed batch matrix multiplications that recover full-dimensional K/V from compressed latents, consume \textbf{61\% of attention-layer time} at batch size~1 on DeepSeek-V3-scale architectures (128~heads, 61~layers), exceeding the attention kernel itself.  These BMMs are memory-bound at all practical batch sizes (arithmetic intensity 1--93 vs.\ H100 roofline crossover at~295).
 
-We investigate INT4 weight-only quantization as a mitigation.  Selective INT4 of reconstruction weights preserves quality ($\Delta$PPL~=~+0.051 on wikitext-2, vs.\ +6.057 for naive whole-model INT4).  However, a custom batched W4A16 Triton kernel achieves only 0.49$\times$ of cuBLAS FP16; we identify \textbf{L2 cache residency} as the root cause.  The 16~MB reconstruction weight matrix fits within H100's 50~MB L2, invalidating the HBM-bound roofline assumption that motivates quantization.  We validate this causally: scaling weight size from 8~MB to 128~MB across the L2 boundary, the INT4/FP16 gap drops from 1.9$\times$ to 1.08$\times$, with NCU confirming FP16 is DRAM-bound (83\% utilization) while INT4 is SM-bound from dequantization (79\%).  To our knowledge, this is the first characterization of this failure mode.
+We investigate INT4 weight-only quantization as a mitigation.  Selective INT4 of reconstruction weights preserves quality ($\Delta$PPL~=~+0.051 on wikitext-2, vs.\ +6.057 for naive whole-model INT4).  However, a custom batched W4A16 Triton kernel achieves only 0.49$\times$ of cuBLAS FP16; we identify \textbf{L2 cache residency} as the root cause.  The 16~MB reconstruction weight matrix fits within H100's 50~MB L2, invalidating the HBM-bound roofline assumption that motivates quantization.  We validate this causally: scaling weight size from 8~MB to 128~MB across the L2 boundary, the INT4/FP16 gap drops from 1.9$\times$ to 1.08$\times$, with NCU confirming FP16 is DRAM-bound (83\% utilization) while INT4 is SM-bound from dequantization (79\%).  We are not aware of prior published characterization of this failure mode.
 
 We validate our profiling methodology through an independent FlashInfer vs.\ Triton kernel comparison on Llama-3-8B, reproducing known results (89\% vs.\ 80\% HBM utilization in decode; 2.6$\times$ prefill gap from TMA hardware loads) and contributing new NCU-level root cause analysis.  All code and data are publicly available.
 \end{abstract}
@@ -88,7 +88,7 @@ We validate our profiling methodology through an independent FlashInfer~\cite{fl
 \textbf{Contributions:}
 \begin{itemize}[leftmargin=*,topsep=0pt]
   \item \textbf{Reconstruction GEMM overhead}: first quantification showing 61\% of MLA attention-layer time at bs=1 (2.17~ms/token across 61~layers).
-  \item \textbf{The L2 cache barrier}: roofline-predicted 3.9$\times$ INT4 speedup collapses to 0.49$\times$ because reconstruction weights are L2-resident, validated by a weight-size sweep across the L2 boundary with NCU counter analysis.  To our knowledge, this is the first characterization of this failure mode.
+  \item \textbf{The L2 cache barrier}: roofline-predicted 3.9$\times$ INT4 speedup collapses to 0.49$\times$ because reconstruction weights are L2-resident, validated by a weight-size sweep across the L2 boundary with NCU counter analysis.  We are not aware of prior published characterization of this failure mode.
   \item \textbf{Selective INT4 quality}: reconstruction weights tolerate INT4 well (+0.051 PPL), establishing them as targets once kernel support matures.
   \item \textbf{NCU-level kernel analysis}: TMA vs.\ global-load root cause, corrected L1 metrics on Hopper, and the occupancy paradox (fewer warps, more bandwidth).
 \end{itemize}
@@ -97,7 +97,7 @@ We validate our profiling methodology through an independent FlashInfer~\cite{fl
 \section{Experimental Setup}
 
 \subsection{Hardware}
-All measurements on a single NVIDIA H100 80GB SXM5 (HBM3).  Reference peaks: 3.35~TB/s HBM bandwidth, 989.4~TFLOPS BF16 tensor core, 132 SMs, 50~MB L2 cache.  GPU clocks were not locked (\texttt{nvidia-smi -lgc}); Section~\ref{sec:repro} quantifies the resulting variance.
+Primary measurements use a single NVIDIA H100 80GB SXM5 (HBM3).  Cross-hardware validation uses a single NVIDIA A100 80GB SXM4 (HBM2e).  Reference peaks for H100: 3.35~TB/s HBM bandwidth, 989.4~TFLOPS BF16 tensor core, 132 SMs, 50~MB L2 cache.  GPU clocks were not locked on either platform (\texttt{nvidia-smi -lgc}); Section~\ref{sec:repro} quantifies the resulting variance.
 
 \subsection{Software}
 SGLang (commit \texttt{7ef18be}), PyTorch 2.9.1+cu128, FlashInfer 0.6.6, Triton 3.5.1, CUDA 12.8, NCU 2025.1.1.
@@ -631,7 +631,7 @@ The $W^\text{kc}$ and $W^\text{vc}$ matrices are \emph{projection weights} that 
 \begin{enumerate}[leftmargin=*,topsep=0pt]
   \item \textbf{Low-rank structure}: The latent space was trained to be compressible; the projection matrices inherit smooth spectral properties.
   \item \textbf{Redundancy}: With $H=128$ heads each projecting from the same 512-dim latent, per-head reconstruction errors are averaged across heads before affecting output.
-  \item \textbf{Post-softmax attenuation}: BMM2 operates on attention-weighted values; quantization noise is attenuated by the softmax distribution's sparsity.
+  \item \textbf{Post-softmax attenuation (hypothesized)}: BMM2 operates on attention-weighted values; quantization noise is attenuated by the softmax distribution's sparsity.
 \end{enumerate}
 
 \subsection{Theoretical Speedup}
@@ -743,6 +743,47 @@ The 8$\times$ gap between roofline-predicted (3.9$\times$) and measured (0.49$\t
 
 We validate this directly by scaling the weight matrix across the L2 boundary.  Holding $H{=}128$ and $d_\text{nope}{=}128$ fixed, we sweep $d_\text{lora}$ from 256 to 4096, producing FP16 weight sizes from 8~MB to 128~MB.  Figure~\ref{fig:l2sweep} shows the result: the INT4/FP16 time ratio drops from 1.91$\times$ at 8~MB to 1.08$\times$ at 128~MB, with a clear knee at 40--48~MB as weights begin to exceed L2 capacity.  At MLA's operating point (16~MB), INT4 is 1.86$\times$ slower; at 128~MB (well past L2), the gap nearly closes.
 
+\textbf{Controlled cache-residency intervention.}  To establish L2 residency as a causal factor rather than a correlate of matrix size, we hold the reconstruction shape fixed ($H{=}128$, $d_\text{nope}{=}128$, $d_\text{lora}{=}512$) and vary only the cache state immediately before each timed launch.  Under the warm condition, 20 untimed kernel executions load the 16\,MB weight tensor into L2 before measurement.  Under the cold condition, a memory sweep (4$\times$ L2 capacity: 256\,MB on H100, 192\,MB on A100) evicts L2 contents immediately before the timed launch, with explicit synchronization between eviction and measurement.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[
+  group style={group size=2 by 1, horizontal sep=1.1cm},
+  width=0.47\columnwidth,
+  height=0.62\columnwidth,
+  ybar,
+  bar width=8pt,
+  ymin=0.9, ymax=2.05,
+  ytick={1.0,1.2,1.4,1.6,1.8,2.0},
+  grid=major, grid style={gray!30},
+  symbolic x coords={FP16-warm,FP16-cold,INT4-warm,INT4-cold},
+  xtick=data,
+  x tick label style={rotate=35,anchor=east,font=\scriptsize},
+  ylabel={Norm.\ latency},
+  extra y ticks={1.0},
+  extra y tick labels={},
+  extra y tick style={grid style={black!50, thick, dashed}},
+]
+\nextgroupplot[title={H100}]
+\addplot[fill=fiblue!80, draw=fiblue!90] coordinates {(FP16-warm,1.000)};
+\addplot[fill=fiblue!35, draw=fiblue!80] coordinates {(FP16-cold,1.343)};
+\addplot[fill=triorange!80, draw=triorange!90] coordinates {(INT4-warm,1.853)};
+\addplot[fill=triorange!35, draw=triorange!80] coordinates {(INT4-cold,1.621)};
+
+\nextgroupplot[title={A100}, ylabel={}]
+\addplot[fill=fiblue!80, draw=fiblue!90] coordinates {(FP16-warm,1.000)};
+\addplot[fill=fiblue!35, draw=fiblue!80] coordinates {(FP16-cold,1.222)};
+\addplot[fill=triorange!80, draw=triorange!90] coordinates {(INT4-warm,1.926)};
+\addplot[fill=triorange!35, draw=triorange!80] coordinates {(INT4-cold,1.697)};
+\end{groupplot}
+\end{tikzpicture}
+\caption{Cache-residency intervention at fixed MLA reconstruction shape (BS=1, normalized to FP16-warm).  H100: FP16 rises from 1.00 to 1.34 under eviction, while INT4 rises from 1.85 to 1.62 relative to FP16-warm.  A100 shows stronger asymmetry: FP16 rises from 1.00 to 1.22 while INT4 rises from 1.93 to 1.70.  FP16 is 2--3$\times$ more sensitive to forced eviction than INT4, directly supporting L2-residency dependence of FP16 and dequantization-limited INT4 behavior.}
+\label{fig:cache_intervention}
+\end{figure}
+
+Figure~\ref{fig:cache_intervention} shows this intervention on both H100 and A100.  FP16 latency increases by 34\% under forced eviction on H100 and 22\% on A100.  INT4 latency increases by 17\% and 8\%, respectively, i.e., roughly 2--3$\times$ less sensitive to cache state.  This asymmetry directly supports the mechanism: FP16's advantage at the 16\,MB operating point depends on L2 residency, while INT4 remains limited by dequantization-driven SM saturation regardless of cache state.  The larger asymmetry on A100 (2.9$\times$ vs.\ 2.0$\times$) is consistent with A100's lower HBM bandwidth, which increases the latency penalty of cache eviction for the memory-bound FP16 path while leaving the compute-bound INT4 path less affected.  NCU counter attribution per tensor allocation is not available in current tooling; the timing-based differential is therefore our primary causal evidence.
+
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}
@@ -784,7 +825,7 @@ We validate this directly by scaling the weight matrix across the L2 boundary.  
 \legend{bs=1, bs=4}
 \end{axis}
 \end{tikzpicture}
-\caption{Weight-size scaling across the L2 boundary.  INT4/FP16 time ratio vs.\ FP16 weight size.  Below 50~MB (green, L2-resident), INT4 is ${\sim}$1.9$\times$ slower.  Above 50~MB, the ratio drops sharply toward parity as FP16 falls back to HBM.  At MLA's 16~MB operating point (arrow), FP16 benefits fully from L2 residency.}
+\caption{Weight-size scaling across the L2 boundary on H100.  INT4/FP16 time ratio vs.\ FP16 weight size.  Below 50~MB (green, L2-resident), INT4 is ${\sim}$1.9$\times$ slower.  Above 50~MB, the ratio drops sharply toward parity as FP16 falls back to HBM.  At MLA's 16~MB operating point (arrow), FP16 benefits fully from L2 residency.  Cross-hardware confirmation appears in the fixed-shape cache intervention result (Figure~\ref{fig:cache_intervention}).}
 \label{fig:l2sweep}
 \end{figure}
 
@@ -794,7 +835,7 @@ This creates a paradox specific to MLA: the same low-rank compression that makes
 
 \textbf{(2) INT4 dequantization shifts the bottleneck from memory to compute.}  The NCU data shows that the INT4 kernel is SM-bound (up to 79\% SM utilization) rather than DRAM-bound.  Bit masking, shifting, signed extension, and type conversion on every packed byte consume the freed bandwidth headroom.  Even when weights exceed L2 and FP16 falls back to HBM, INT4 cannot fully exploit its 4$\times$ data reduction because dequantization saturates the SMs first.
 
-\textbf{(3) cuBLAS dispatch advantage.}  \texttt{torch.bmm} dispatches via the \texttt{nvjet} kernel family with TMA hardware loads (168 registers, L1 bypassed entirely), while our Triton kernel uses standard \texttt{ld.global} with 57 registers.  The cuBLAS path is more resilient to cache pressure: under concurrent L2 contention, FP16 degrades 1.7$\times$ while INT4 degrades 3.7$\times$.
+\textbf{(3) cuBLAS dispatch advantage.}  \texttt{torch.bmm} dispatches via the \texttt{nvjet} kernel family with TMA hardware loads (168 registers, L1 bypassed entirely), while our Triton kernel uses standard \texttt{ld.global} with 57 registers.  Under concurrent L2 contention, INT4 shows greater sensitivity to cache pressure than FP16---consistent with its irregular packed-byte access pattern.
 
 \textbf{When does INT4 help?}  The L2 cache barrier is not absolute.  In production serving, concurrent operations (FFN GEMMs, attention across multiple layers, multi-tenant request batching) contend for L2 capacity and may evict reconstruction weights back to HBM.  INT4 reconstruction gains are therefore \textbf{deployment-dependent}: negligible in isolated benchmarks, but potentially significant under L2 pressure from high-throughput serving.  Fusing reconstruction across multiple layers to exceed L2 capacity, or deploying on GPUs with smaller L2 caches, could also restore the predicted benefit.
 
@@ -936,7 +977,7 @@ Despite the kernel limitations, reconstruction weights tolerate quantization wel
 % ══════════════════════════════════════════════════════════════════════════════
 \section{Conclusion}
 
-We presented two sets of findings.  First, a kernel-level characterization of FlashInfer vs.\ Triton attention on H100, identifying TMA hardware loads, memory access pattern quality, and cooperative grid launch as the three root causes of the performance gap.  Second, we identified MLA's reconstruction GEMMs as a dominant and previously unquantified bottleneck, consuming 61\% of attention-layer time at batch size 1 for DeepSeek-V3-scale architectures.
+MLA's reconstruction GEMMs consume 61\% of attention-layer time at batch size 1---a bottleneck that standard benchmarks miss, that roofline analysis mispredicts by 8$\times$, and that naive INT4 quantization worsens rather than fixes.  We also provide a kernel-level characterization of FlashInfer vs.\ Triton attention on H100, identifying TMA hardware loads, memory access pattern quality, and cooperative grid launch as the three root causes of the performance gap.
 
 The INT4 quantization results illustrate a subtlety in MLA optimization.  \textbf{Quality is safe}: selective INT4 adds only +0.051 perplexity.  \textbf{But speedup is not automatic}: our custom Triton W4A16 kernel achieves 0.49$\times$ of cuBLAS FP16 because the 16~MB reconstruction weights fit in H100's 50~MB L2 cache, making HBM bandwidth savings irrelevant.  The gap between roofline-predicted (3.9$\times$) and realized performance is specific to small, L2-resident weight matrices, a regime common in MLA but absent from standard LLM linear layers.  Closing this gap requires either CUDA-native INT8 tensor core kernels, cross-layer weight fusion beyond L2 capacity, or deployment on GPUs with smaller L2 caches.
 

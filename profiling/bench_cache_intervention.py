@@ -33,6 +33,7 @@ from bench_l2_barrier import batched_int4_gemm, quantize_weights_int4
 H = 128
 D_NOPE = 128
 D_LORA = 512
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 @dataclass
@@ -160,7 +161,7 @@ def run_benchmark(args: argparse.Namespace) -> None:
                 r["int4_norm_to_fp16_warm"] = round(r["int4_ms"] / base, 6)
 
     out_name = f"results_cache_intervention_{'h100' if 'H100' in gpu_name.upper() else 'a100'}.json"
-    out_path = os.path.join("/root/sglang/profiling", out_name)
+    out_path = os.path.join(BASE_DIR, out_name)
     with open(out_path, "w") as f:
         json.dump(
             {
