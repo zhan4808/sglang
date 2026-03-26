@@ -1,0 +1,27 @@
+{
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "stream_buffer_mb": 512,
+  "evict_buffer_mb": 256,
+  "baseline": {
+    "ms_per_iter": 0.356427,
+    "bandwidth_gb_s": 3012.514
+  },
+  "post_evict_trials": [
+    {
+      "ms_per_iter": 0.356494,
+      "bandwidth_gb_s": 3011.946
+    },
+    {
+      "ms_per_iter": 0.356302,
+      "bandwidth_gb_s": 3013.574
+    },
+    {
+      "ms_per_iter": 0.356384,
+      "bandwidth_gb_s": 3012.879
+    }
+  ],
+  "post_evict_avg": {
+    "ms_per_iter": 0.356393,
+    "bandwidth_gb_s": 3012.8
+  }
+}
